@@ -1,0 +1,53 @@
+version: "3.8"
+
+services:
+  localstack:
+    container_name: localstack-query-service
+    image: localstack/localstack:latest
+    ports:
+      - "127.0.0.1:4566:4566" # LocalStack Gateway
+      - "127.0.0.1:4571:4571" # Elasticsearch (for logging)
+    environment:
+      - SERVICES=apigateway,lambda,dynamodb,logs,iam
+      - DEBUG=1
+      - LAMBDA_EXECUTOR=docker
+      - DOCKER_HOST=unix:///var/run/docker.sock
+      - LOCALSTACK_DOCKER_NAME=localstack-query-service
+      - LAMBDA_DOCKER_NETWORK=query-service-network
+    volumes:
+      - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "./infra/localstack:/etc/localstack/init/ready.d"
+      - "./lambdas:/opt/code/lambdas"
+    networks:
+      - query-service-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  eks-handler:
+    container_name: eks-handler
+    build:
+      context: ./eks-handler
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - LOCALSTACK_ENDPOINT=http://localstack:4566
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+    depends_on:
+      localstack:
+        condition: service_healthy
+    networks:
+      - query-service-network
+    command:
+      ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+networks:
+  query-service-network:
+    name: query-service-network
+    driver: bridge
