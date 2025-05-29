@@ -4,10 +4,10 @@
 param(
     [Parameter(Mandatory = $false)]
     [string]$TestType = "all", # all, unit, integration, coverage
-    
+
     [Parameter(Mandatory = $false)]
     [switch]$Verbose = $false,
-    
+
     [Parameter(Mandatory = $false)]
     [switch]$InstallDeps = $false
 )
@@ -35,7 +35,7 @@ if ($InstallDeps) {
 # 檢查服務狀態
 function Check-Services {
     Write-Host "`n🔍 檢查服務狀態..." -ForegroundColor Yellow
-    
+
     # 檢查 LocalStack
     try {
         $localstackHealth = Invoke-RestMethod -Uri "http://localhost:4566/_localstack/health" -Method Get
@@ -44,7 +44,7 @@ function Check-Services {
     catch {
         Write-Host "⚠️  LocalStack: 未運行 (整合測試將跳過)" -ForegroundColor Yellow
     }
-    
+
     # 檢查 EKS Handler
     try {
         $eksHealth = Invoke-RestMethod -Uri "http://localhost:8000/health" -Method Get
@@ -58,14 +58,14 @@ function Check-Services {
 # 執行單元測試
 function Run-UnitTests {
     Write-Host "`n🚀 執行單元測試..." -ForegroundColor Cyan
-    
+
     $testCommand = "pytest tests/test_eks_handler.py"
     if ($Verbose) {
         $testCommand += " -v -s"
     }
-    
+
     Invoke-Expression $testCommand
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ 單元測試通過" -ForegroundColor Green
     }
@@ -78,18 +78,18 @@ function Run-UnitTests {
 # 執行整合測試
 function Run-IntegrationTests {
     Write-Host "`n🚀 執行整合測試..." -ForegroundColor Cyan
-    
+
     # 設定環境變數
     $env:LOCALSTACK_URL = "http://localhost:4566"
     $env:EKS_HANDLER_URL = "http://localhost:8000"
-    
+
     $testCommand = "pytest tests/test_integration.py"
     if ($Verbose) {
         $testCommand += " -v -s"
     }
-    
+
     Invoke-Expression $testCommand
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ 整合測試通過" -ForegroundColor Green
     }
@@ -102,18 +102,18 @@ function Run-IntegrationTests {
 # 執行覆蓋率測試
 function Run-CoverageTests {
     Write-Host "`n📊 執行覆蓋率測試..." -ForegroundColor Cyan
-    
+
     $coverageCommand = "pytest tests/ --cov=. --cov-report=html --cov-report=term"
     if ($Verbose) {
         $coverageCommand += " -v"
     }
-    
+
     Invoke-Expression $coverageCommand
-    
+
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✅ 覆蓋率測試完成" -ForegroundColor Green
         Write-Host "📄 HTML 報告已生成在 htmlcov/index.html" -ForegroundColor Yellow
-        
+
         # 自動開啟報告（可選）
         $openReport = Read-Host "是否要開啟覆蓋率報告？(y/n)"
         if ($openReport -eq 'y') {
@@ -161,4 +161,4 @@ Write-Host "`n📋 測試摘要:" -ForegroundColor Cyan
 Write-Host "- Python 版本: $pythonVersion"
 Write-Host "- 測試類型: $TestType"
 Write-Host "- 詳細模式: $Verbose"
-Write-Host "- 時間: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" 
+Write-Host "- 時間: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"

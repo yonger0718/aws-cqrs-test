@@ -148,21 +148,21 @@ if exist "test_stream.py" (
     python test_stream.py
 ) else (
     echo ⚠️ test_stream.py 檔案不存在，執行手動測試...
-    
+
     echo.
     echo 📊 插入測試數據到命令表...
-    
+
     :: 生成時間戳
     for /f "tokens=* delims=" %%a in ('powershell -Command "Get-Date -UFormat %%s"') do set TIMESTAMP=%%a
     set TIMESTAMP=%TIMESTAMP:.=%
     set TRANSACTION_ID=manual_test_%TIMESTAMP%
-    
+
     :: 插入測試數據
     aws --endpoint-url=%AWS_ENDPOINT% dynamodb put-item --table-name command-records --item "{\"transaction_id\": {\"S\": \"%TRANSACTION_ID%\"}, \"created_at\": {\"N\": \"%TIMESTAMP%000\"}, \"user_id\": {\"S\": \"manual_test_user\"}, \"marketing_id\": {\"S\": \"manual_campaign\"}, \"notification_title\": {\"S\": \"手動測試推播\"}, \"platform\": {\"S\": \"ANDROID\"}, \"status\": {\"S\": \"PENDING\"}}"
-    
+
     echo 📊 等待 5 秒讓 Stream 處理...
     timeout /t 5 /nobreak > nul
-    
+
     echo 📊 檢查數據是否同步...
     aws --endpoint-url=%AWS_ENDPOINT% dynamodb query --table-name notification-records --key-condition-expression "user_id = :user_id" --expression-attribute-values "{\":user_id\": {\"S\": \"manual_test_user\"}}"
 )
@@ -264,4 +264,4 @@ echo.
 
 :end
 echo 按任意鍵結束...
-pause > nul 
+pause > nul

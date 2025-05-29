@@ -5,16 +5,19 @@
 您有三種方式可以快速驗證整個系統：
 
 ### 1️⃣ **PowerShell 腳本 (推薦)**
+
 ```powershell
 .\verify_system.ps1
 ```
 
 ### 2️⃣ **Windows Batch 腳本**
+
 ```cmd
 verify_system.bat
 ```
 
 ### 3️⃣ **Python 測試腳本**
+
 ```bash
 python test_stream.py
 python test_api.py
@@ -25,6 +28,7 @@ python test_api.py
 ## 🔧 手動驗證指令 (選擇性)
 
 ### ✅ 快速狀態檢查
+
 ```bash
 # 檢查容器狀態
 docker ps
@@ -37,15 +41,17 @@ aws --endpoint-url=http://localhost:4566 dynamodb list-tables
 ```
 
 ### 📊 數據一致性檢查
+
 ```bash
 # 命令表記錄數
 aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name command-records --select COUNT
 
-# 查詢表記錄數  
+# 查詢表記錄數
 aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name notification-records --select COUNT
 ```
 
 ### 🧪 API 功能測試
+
 ```bash
 # 查詢所有記錄
 curl "http://localhost:8000/query/user"
@@ -55,6 +61,7 @@ curl "http://localhost:8000/query/user?user_id=stream_test_user"
 ```
 
 ### 🎯 Stream 處理測試
+
 ```bash
 # 執行完整的 CQRS 測試
 python test_stream.py
@@ -65,6 +72,7 @@ python test_stream.py
 ## 📋 預期正常結果
 
 ### ✅ Docker 容器
+
 ```
 NAMES               STATUS              PORTS
 eks-handler         Up X hours          0.0.0.0:8000->8000/tcp
@@ -72,6 +80,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 ```
 
 ### ✅ EKS Handler 響應
+
 ```json
 {
   "message": "Query Service is running",
@@ -81,6 +90,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 ```
 
 ### ✅ DynamoDB 表
+
 ```json
 {
   "TableNames": [
@@ -91,6 +101,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 ```
 
 ### ✅ API 查詢響應
+
 ```json
 {
   "success": true,
@@ -100,6 +111,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 ```
 
 ### ✅ CQRS Stream 測試
+
 ```
 ==============================
 命令表記錄數: X
@@ -113,6 +125,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 ## 🚨 故障排除
 
 ### ❌ 容器未運行
+
 ```bash
 # 重新啟動所有服務
 docker compose up -d
@@ -125,6 +138,7 @@ sleep 10
 ```
 
 ### ❌ API 無法連接
+
 ```bash
 # 檢查 EKS Handler 日誌
 docker logs eks-handler
@@ -134,6 +148,7 @@ docker restart eks-handler
 ```
 
 ### ❌ DynamoDB 錯誤
+
 ```bash
 # 檢查 LocalStack 日誌
 docker logs localstack-query-service
@@ -143,6 +158,7 @@ docker restart localstack-query-service
 ```
 
 ### ❌ Stream 不同步
+
 ```bash
 # 檢查 Lambda 函數
 aws --endpoint-url=http://localhost:4566 lambda list-functions
@@ -169,10 +185,11 @@ aws --endpoint-url=http://localhost:4566 lambda list-event-source-mappings
 ## 📄 生成測試報告
 
 所有驗證腳本都會自動生成測試報告：
+
 - **PowerShell**: `verification_report_YYYYMMDD_HHMMSS.md`
 - **Python**: 控制台輸出詳細結果
 - **手動測試**: 需要自行記錄結果
 
 ---
 
-**🎉 測試通過後，您的 CQRS 架構就完全可用了！** 
+**🎉 測試通過後，您的 CQRS 架構就完全可用了！**

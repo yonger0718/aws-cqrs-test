@@ -59,4 +59,4 @@ catch {
 }
 
 Write-Host "`n✅ Quick test completed!" -ForegroundColor Green
-Read-Host "Press Enter to exit" 
+Read-Host "Press Enter to exit"

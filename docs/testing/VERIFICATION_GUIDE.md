@@ -3,6 +3,7 @@
 ## 📋 測試環境檢查清單
 
 ### ✅ 前置條件
+
 - [x] Docker Desktop 正在運行
 - [x] LocalStack 容器已啟動 (port 4566)
 - [x] EKS Handler 容器已啟動 (port 8000)
@@ -16,6 +17,7 @@
 ### 1. **服務狀態檢查**
 
 #### 檢查 Docker 容器
+
 ```bash
 # 查看運行中的容器
 docker ps
@@ -26,6 +28,7 @@ docker ps
 ```
 
 #### 檢查服務健康狀態
+
 ```bash
 # 檢查 EKS Handler 健康狀態
 curl http://localhost:8000/
@@ -37,11 +40,13 @@ curl http://localhost:4566/health
 ### 2. **DynamoDB 表狀態檢查**
 
 #### 列出所有表
+
 ```bash
 aws --endpoint-url=http://localhost:4566 dynamodb list-tables
 ```
 
 #### 檢查命令表記錄數
+
 ```bash
 aws --endpoint-url=http://localhost:4566 dynamodb scan \
   --table-name command-records \
@@ -49,6 +54,7 @@ aws --endpoint-url=http://localhost:4566 dynamodb scan \
 ```
 
 #### 檢查查詢表記錄數
+
 ```bash
 aws --endpoint-url=http://localhost:4566 dynamodb scan \
   --table-name notification-records \
@@ -58,11 +64,13 @@ aws --endpoint-url=http://localhost:4566 dynamodb scan \
 ### 3. **Lambda 函數檢查**
 
 #### 列出所有 Lambda 函數
+
 ```bash
 aws --endpoint-url=http://localhost:4566 lambda list-functions
 ```
 
 #### 檢查 Stream Processor Lambda
+
 ```bash
 aws --endpoint-url=http://localhost:4566 lambda get-function \
   --function-name stream_processor_lambda
@@ -71,6 +79,7 @@ aws --endpoint-url=http://localhost:4566 lambda get-function \
 ### 4. **DynamoDB Stream 狀態檢查**
 
 #### 檢查 Stream 配置
+
 ```bash
 aws --endpoint-url=http://localhost:4566 dynamodb describe-table \
   --table-name command-records \
@@ -78,6 +87,7 @@ aws --endpoint-url=http://localhost:4566 dynamodb describe-table \
 ```
 
 #### 檢查事件源映射
+
 ```bash
 aws --endpoint-url=http://localhost:4566 lambda list-event-source-mappings
 ```
@@ -87,6 +97,7 @@ aws --endpoint-url=http://localhost:4566 lambda list-event-source-mappings
 ## 🧪 核心功能測試
 
 ### 測試 1: EKS Handler 直接調用
+
 ```bash
 # 測試健康檢查端點
 curl -X GET http://localhost:8000/
@@ -101,6 +112,7 @@ curl -X GET "http://localhost:8000/query/user"
 ### 測試 2: DynamoDB 數據查詢
 
 #### 查詢命令表 (Command Side)
+
 ```bash
 # 掃描所有記錄
 aws --endpoint-url=http://localhost:4566 dynamodb scan \
@@ -116,6 +128,7 @@ aws --endpoint-url=http://localhost:4566 dynamodb get-item \
 ```
 
 #### 查詢通知表 (Query Side)
+
 ```bash
 # 掃描所有記錄
 aws --endpoint-url=http://localhost:4566 dynamodb scan \
@@ -133,12 +146,14 @@ aws --endpoint-url=http://localhost:4566 dynamodb query \
 ### 測試 3: CQRS Stream 處理功能
 
 #### 使用現有測試腳本
+
 ```bash
 # 執行 CQRS Stream 測試
 python test_stream.py
 ```
 
 #### 手動測試 Stream 處理
+
 ```bash
 # 1. 記錄當前查詢表記錄數
 aws --endpoint-url=http://localhost:4566 dynamodb scan \
@@ -181,6 +196,7 @@ aws --endpoint-url=http://localhost:4566 dynamodb query \
 ## 🔧 API Gateway 測試
 
 ### 測試 Lambda 函數直接調用
+
 ```bash
 # 測試 Query Lambda
 aws --endpoint-url=http://localhost:4566 lambda invoke \
@@ -196,6 +212,7 @@ aws --endpoint-url=http://localhost:4566 lambda invoke \
 ```
 
 ### 測試 API Gateway 端點
+
 ```bash
 # 列出 API Gateway
 aws --endpoint-url=http://localhost:4566 apigateway get-rest-apis
@@ -210,6 +227,7 @@ curl -X GET "http://localhost:4566/restapis/{api-id}/test/_user_request_/query/u
 ## 📊 性能和監控測試
 
 ### 測試數據一致性
+
 ```bash
 # 檢查兩個表的記錄數是否合理（Query 表 <= Command 表）
 echo "命令表記錄數:"
@@ -226,6 +244,7 @@ aws --endpoint-url=http://localhost:4566 dynamodb scan \
 ```
 
 ### 測試查詢性能
+
 ```bash
 # 測試大量數據查詢性能
 time curl -X GET "http://localhost:8000/query/user"
@@ -239,6 +258,7 @@ time curl -X GET "http://localhost:8000/query/user?user_id=stream_test_user"
 ## 🚨 故障排除指令
 
 ### 查看容器日誌
+
 ```bash
 # 查看 EKS Handler 日誌
 docker logs eks-handler
@@ -251,6 +271,7 @@ docker logs -f eks-handler
 ```
 
 ### 重啟服務
+
 ```bash
 # 重啟 EKS Handler
 docker restart eks-handler
@@ -263,6 +284,7 @@ docker compose restart
 ```
 
 ### 清理和重新初始化
+
 ```bash
 # 停止所有服務
 docker compose down
@@ -281,6 +303,7 @@ sleep 10
 ## 🎯 預期結果參考
 
 ### ✅ 正常運行指標
+
 - **EKS Handler**: HTTP 200 響應，JSON 格式數據
 - **DynamoDB 表**: 兩個表都存在且有數據
 - **Stream 處理**: 5 秒內數據同步成功
@@ -288,6 +311,7 @@ sleep 10
 - **數據一致性**: Query 表記錄數 <= Command 表記錄數
 
 ### ⚠️ 常見問題
+
 - **502 錯誤**: API Gateway 整合問題，但 EKS Handler 直接調用正常
 - **數據不同步**: 檢查 DynamoDB Stream 和事件源映射
 - **容器無法啟動**: 檢查端口占用和 Docker 資源
@@ -297,6 +321,7 @@ sleep 10
 ## 📝 測試報告範本
 
 ### 測試執行記錄
+
 ```
 測試時間: _____________
 測試人員: _____________
@@ -324,4 +349,4 @@ _________________________________
 
 ---
 
-**驗證完成後，您將確認整個 CQRS 架構正常運行！** 🎉 
+**驗證完成後，您將確認整個 CQRS 架構正常運行！** 🎉

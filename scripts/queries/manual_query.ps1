@@ -10,7 +10,7 @@ $EKS_ENDPOINT = "http://localhost:8000"
 function Show-Menu {
     Write-Host "`nSelect your query:" -ForegroundColor Yellow
     Write-Host "1. Show system status" -ForegroundColor Green
-    Write-Host "2. Query DynamoDB tables" -ForegroundColor Green  
+    Write-Host "2. Query DynamoDB tables" -ForegroundColor Green
     Write-Host "3. View table contents (sample)" -ForegroundColor Green
     Write-Host "4. Get record counts" -ForegroundColor Green
     Write-Host "5. Check EKS Handler info" -ForegroundColor Green
@@ -21,7 +21,7 @@ function Show-Menu {
 function Show-SystemStatus {
     Write-Host "`n📊 System Status Summary" -ForegroundColor Cyan
     Write-Host "========================" -ForegroundColor Gray
-    
+
     # EKS Handler
     try {
         $eks = Invoke-RestMethod -Uri $EKS_ENDPOINT -Method GET -TimeoutSec 3
@@ -31,7 +31,7 @@ function Show-SystemStatus {
     catch {
         Write-Host "❌ EKS Handler: FAILED" -ForegroundColor Red
     }
-    
+
     # DynamoDB Tables
     $headers = @{
         "Content-Type" = "application/x-amz-json-1.0"
@@ -50,25 +50,25 @@ function Show-SystemStatus {
 function Query-DynamoDBTables {
     Write-Host "`n🗂️ DynamoDB Tables Information" -ForegroundColor Cyan
     Write-Host "==============================" -ForegroundColor Gray
-    
+
     $headers = @{
         "Content-Type" = "application/x-amz-json-1.0"
         "X-Amz-Target" = "DynamoDB_20120810.ListTables"
     }
-    
+
     try {
         $response = Invoke-RestMethod -Uri $AWS_ENDPOINT -Method POST -Headers $headers -Body '{}'
         Write-Host "📋 Available tables:" -ForegroundColor Green
-        $response.TableNames | ForEach-Object { 
-            Write-Host "  - $_" -ForegroundColor Cyan 
-            
+        $response.TableNames | ForEach-Object {
+            Write-Host "  - $_" -ForegroundColor Cyan
+
             # Get table description
             $descHeaders = @{
                 "Content-Type" = "application/x-amz-json-1.0"
                 "X-Amz-Target" = "DynamoDB_20120810.DescribeTable"
             }
             $descBody = @{ TableName = $_ } | ConvertTo-Json
-            
+
             try {
                 $desc = Invoke-RestMethod -Uri $AWS_ENDPOINT -Method POST -Headers $descHeaders -Body $descBody
                 Write-Host "    Status: $($desc.Table.TableStatus)" -ForegroundColor White
@@ -87,12 +87,12 @@ function Query-DynamoDBTables {
 function View-TableContents {
     Write-Host "`n📄 Table Contents (Sample)" -ForegroundColor Cyan
     Write-Host "==========================" -ForegroundColor Gray
-    
+
     $scanHeaders = @{
         "Content-Type" = "application/x-amz-json-1.0"
         "X-Amz-Target" = "DynamoDB_20120810.Scan"
     }
-    
+
     # Command Records
     Write-Host "`n📝 Command Records (first 3):" -ForegroundColor Yellow
     $cmdBody = @{ TableName = "command-records"; Limit = 3 } | ConvertTo-Json
@@ -108,8 +108,8 @@ function View-TableContents {
     catch {
         Write-Host "  ❌ Failed to query command records" -ForegroundColor Red
     }
-    
-    # Notification Records  
+
+    # Notification Records
     Write-Host "`n📢 Notification Records (first 3):" -ForegroundColor Yellow
     $notifyBody = @{ TableName = "notification-records"; Limit = 3 } | ConvertTo-Json
     try {
@@ -130,12 +130,12 @@ function View-TableContents {
 function Get-RecordCounts {
     Write-Host "`n📊 Record Counts" -ForegroundColor Cyan
     Write-Host "=================" -ForegroundColor Gray
-    
+
     $countHeaders = @{
         "Content-Type" = "application/x-amz-json-1.0"
         "X-Amz-Target" = "DynamoDB_20120810.Scan"
     }
-    
+
     # Command Records Count
     $cmdCountBody = @{ TableName = "command-records"; Select = "COUNT" } | ConvertTo-Json
     try {
@@ -145,7 +145,7 @@ function Get-RecordCounts {
     catch {
         Write-Host "📝 Command Records: Failed to count" -ForegroundColor Red
     }
-    
+
     # Notification Records Count
     $notifyCountBody = @{ TableName = "notification-records"; Select = "COUNT" } | ConvertTo-Json
     try {
@@ -155,12 +155,12 @@ function Get-RecordCounts {
     catch {
         Write-Host "📢 Notification Records: Failed to count" -ForegroundColor Red
     }
-    
+
     # CQRS Consistency Check
     if ($cmdResponse -and $notifyResponse) {
         $cmdCount = [int]$cmdResponse.Count
         $notifyCount = [int]$notifyResponse.Count
-        
+
         Write-Host "`n🔍 CQRS Consistency:" -ForegroundColor Magenta
         if ($notifyCount -le $cmdCount) {
             Write-Host "✅ Data consistency OK (Query: $notifyCount <= Command: $cmdCount)" -ForegroundColor Green
@@ -168,7 +168,7 @@ function Get-RecordCounts {
         else {
             Write-Host "⚠️ Data inconsistency detected (Query: $notifyCount > Command: $cmdCount)" -ForegroundColor Yellow
         }
-        
+
         $syncRate = [math]::Round(($notifyCount / $cmdCount) * 100, 1)
         Write-Host "📈 Synchronization rate: $syncRate%" -ForegroundColor Cyan
     }
@@ -177,7 +177,7 @@ function Get-RecordCounts {
 function Check-EKSHandler {
     Write-Host "`n🚀 EKS Handler Information" -ForegroundColor Cyan
     Write-Host "==========================" -ForegroundColor Gray
-    
+
     try {
         $response = Invoke-RestMethod -Uri $EKS_ENDPOINT -Method GET
         Write-Host "📋 Service Details:" -ForegroundColor Yellow
@@ -185,7 +185,7 @@ function Check-EKSHandler {
         Write-Host "  Version: $($response.version)" -ForegroundColor Cyan
         Write-Host "  Available Endpoints:" -ForegroundColor Cyan
         $response.endpoints | ForEach-Object { Write-Host "    - $_" -ForegroundColor White }
-        
+
         Write-Host "`n⚠️ Note: API endpoints return 405 Method Not Allowed" -ForegroundColor Yellow
         Write-Host "   This might be normal - they may require specific parameters" -ForegroundColor Yellow
         Write-Host "   or different HTTP methods for security reasons." -ForegroundColor Yellow
@@ -199,25 +199,25 @@ function Check-EKSHandler {
 do {
     Show-Menu
     $choice = Read-Host "Enter option (0-5)"
-    
+
     switch ($choice) {
         "1" { Show-SystemStatus }
         "2" { Query-DynamoDBTables }
         "3" { View-TableContents }
         "4" { Get-RecordCounts }
         "5" { Check-EKSHandler }
-        "0" { 
+        "0" {
             Write-Host "`n👋 Thank you for using the CQRS Query Tool!" -ForegroundColor Green
-            break 
+            break
         }
-        default { 
-            Write-Host "`n❌ Invalid option. Please try again." -ForegroundColor Red 
+        default {
+            Write-Host "`n❌ Invalid option. Please try again." -ForegroundColor Red
         }
     }
-    
+
     if ($choice -ne "0") {
         Write-Host ""
         Read-Host "Press Enter to continue"
         Clear-Host
     }
-} while ($choice -ne "0") 
+} while ($choice -ne "0")

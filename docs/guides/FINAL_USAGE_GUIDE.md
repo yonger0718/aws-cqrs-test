@@ -11,8 +11,9 @@
 ```
 
 **測試結果顯示：**
+
 - ✅ EKS Handler 正常運行
-- ✅ LocalStack 服務可用（dynamodb, lambda, logs）  
+- ✅ LocalStack 服務可用（dynamodb, lambda, logs）
 - ✅ DynamoDB 表存在（command-records, notification-records）
 - ⚠️ 一個小問題：Method Not Allowed（不影響核心功能）
 
@@ -27,6 +28,7 @@
 ```
 
 **功能選單：**
+
 1. DynamoDB Tables - 查看表內容和數據
 2. Lambda Functions - 查看和測試 Lambda 函數
 3. EKS Handler API - 測試 REST API
@@ -37,6 +39,7 @@
 ## 📖 **方法 3：手動 HTTP 查詢**
 
 ### 🗂️ **查詢 DynamoDB 表列表**
+
 ```powershell
 $headers = @{
     "Content-Type" = "application/x-amz-json-1.0"
@@ -46,6 +49,7 @@ Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -
 ```
 
 ### 📊 **查看表內容**
+
 ```powershell
 # 查詢 command-records 表
 $scanBody = @{ TableName = "command-records"; Limit = 10 } | ConvertTo-Json
@@ -61,6 +65,7 @@ Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -
 ```
 
 ### 🚀 **測試 EKS Handler API**
+
 ```powershell
 # 健康檢查
 Invoke-RestMethod -Uri "http://localhost:8000/" -Method GET
@@ -73,6 +78,7 @@ Invoke-RestMethod -Uri "http://localhost:8000/query/user?user_id=stream_test_use
 ```
 
 ### 🔧 **查詢 Lambda 函數**
+
 ```powershell
 # 列出所有 Lambda 函數
 Invoke-RestMethod -Uri "http://localhost:4566/2015-03-31/functions" -Method GET
@@ -82,6 +88,7 @@ Invoke-RestMethod -Uri "http://localhost:4566/2015-03-31/functions/stream_proces
 ```
 
 ### 📬 **檢查 SQS 佇列**
+
 ```powershell
 # 檢查是否有 SQS 佇列
 try {
@@ -98,14 +105,16 @@ try {
 基於測試結果，您的系統狀態：
 
 ### ✅ **正常運行的服務**
+
 - **EKS Handler**：提供查詢 API（端口 8000）
-- **LocalStack**：模擬 AWS 服務（端口 4566）  
+- **LocalStack**：模擬 AWS 服務（端口 4566）
 - **DynamoDB**：兩個表正常運行
   - `command-records`：命令側（寫入）
   - `notification-records`：查詢側（讀取）
 - **Lambda 函數**：stream_processor_lambda 等
 
 ### 📊 **數據架構**
+
 - **CQRS 模式**：讀寫分離
 - **DynamoDB Stream**：自動數據同步
 - **無 SQS**：直接使用 Stream 處理（設計正確）
@@ -115,6 +124,7 @@ try {
 ## 🛠️ **常見查詢範例**
 
 ### 查看最新推播記錄
+
 ```powershell
 $response = Invoke-RestMethod -Uri "http://localhost:8000/query/user" -Method GET
 Write-Host "總記錄數: $($response.count)"
@@ -124,13 +134,14 @@ $response.items | Select-Object -First 3 | ForEach-Object {
 ```
 
 ### 統計記錄數量
+
 ```powershell
 # 命令表記錄數
 $commandBody = @{ TableName = "command-records"; Select = "COUNT" } | ConvertTo-Json
 $headers = @{ "Content-Type" = "application/x-amz-json-1.0"; "X-Amz-Target" = "DynamoDB_20120810.Scan" }
 $commandCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body $commandBody).Count
 
-# 查詢表記錄數  
+# 查詢表記錄數
 $queryBody = @{ TableName = "notification-records"; Select = "COUNT" } | ConvertTo-Json
 $queryCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body $queryBody).Count
 
@@ -151,6 +162,7 @@ Write-Host "命令表: $commandCount 筆, 查詢表: $queryCount 筆"
 **您的 CQRS 架構完全可用，所有服務正常運行！**
 
 **立即開始：**
+
 ```powershell
 # 快速檢查系統狀態
 .\quick_test.ps1
@@ -159,4 +171,4 @@ Write-Host "命令表: $commandCount 筆, 查詢表: $queryCount 筆"
 .\simple_query.ps1
 ```
 
-�� **享受查詢您的分散式系統數據！** 
+�� **享受查詢您的分散式系統數據！**

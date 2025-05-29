@@ -51,6 +51,7 @@ aws-hexagon-notify-test/
 ## 🗄️ 資料表設計
 
 ### Command Table (command-records) - 寫入側
+
 | 欄位名稱              | 類型       | 說明                      |
 |----------------------|------------|---------------------------|
 | `transaction_id`     | String (S) | Partition Key，交易ID     |
@@ -67,6 +68,7 @@ aws-hexagon-notify-test/
 **特色**: 啟用 DynamoDB Stream，支援 NEW_AND_OLD_IMAGES
 
 ### Query Table (notification-records) - 查詢側
+
 | 欄位名稱             | 類型       | 說明                                   |
 |----------------------|------------|----------------------------------------|
 | `user_id`            | String (S) | Partition Key                          |
@@ -79,18 +81,21 @@ aws-hexagon-notify-test/
 | `error_msg`          | String (S) | 失敗原因（可選）                       |
 
 **GSI 索引**:
+
 - `marketing_id-index`: 根據活動查詢
 - `transaction_id-status-index`: 根據交易狀態查詢
 
 ## 🚀 快速開始
 
 ### 1. 系統驗證
+
 ```powershell
 # 驗證環境和依賴
 .\scripts\verification\verify_system.ps1
 ```
 
 ### 2. 啟動服務
+
 ```bash
 # 進入專案目錄
 cd query-service
@@ -109,6 +114,7 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ```
 
 ### 4. 執行測試驗證
+
 ```powershell
 # 快速測試
 .\scripts\testing\quick_test.ps1
@@ -120,6 +126,7 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ## 📋 API 使用範例
 
 ### 使用查詢腳本（推薦）
+
 ```powershell
 # 手動查詢工具
 .\scripts\queries\manual_query.ps1
@@ -132,6 +139,7 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ```
 
 ### 直接 API 調用
+
 使用初始化時顯示的 API ID 替換 `{API_ID}`：
 
 ```bash
@@ -158,6 +166,7 @@ python scripts\development\simulate_writes.py
 ```
 
 腳本提供以下測試選項：
+
 1. **模擬批次推播**: 模擬行銷活動的批次推播
 2. **模擬單個推播**: 模擬單一用戶推播
 3. **模擬狀態更新**: 模擬推播狀態變更
@@ -182,6 +191,7 @@ docker exec -it localstack-query-service awslocal dynamodb put-item \
 ## 🛠️ 開發與調試
 
 ### 檢查表結構和數據
+
 ```python
 # 使用表檢查工具
 python scripts\testing\check_tables.py
@@ -202,11 +212,13 @@ docker exec -it localstack-query-service awslocal dynamodb scan --table-name not
 ### Stream 未正確處理
 
 1. 檢查 Stream 是否啟用：
+
    ```bash
    docker exec -it localstack-query-service awslocal dynamodb describe-table --table-name command-records --query 'Table.StreamSpecification'
    ```
 
 2. 檢查事件源映射：
+
    ```bash
    docker exec -it localstack-query-service awslocal lambda list-event-source-mappings
    ```
@@ -222,6 +234,7 @@ docker exec -it localstack-query-service awslocal dynamodb scan --table-name not
 ### Lambda 函數錯誤
 
 查看具體的 Lambda 日誌：
+
 ```bash
 docker exec -it localstack-query-service awslocal logs tail /aws/lambda/stream_processor_lambda
 ```
@@ -229,18 +242,22 @@ docker exec -it localstack-query-service awslocal logs tail /aws/lambda/stream_p
 ## 🎯 CQRS 模式優勢
 
 ### 1. 性能優化
+
 - **寫入優化**: 命令表針對寫入操作優化，key 設計支援快速插入
 - **查詢優化**: 查詢表針對讀取操作優化，包含多個 GSI 支援不同查詢模式
 
 ### 2. 可擴展性
+
 - **獨立擴展**: 寫入側和查詢側可以獨立調整容量
 - **異步處理**: Stream 處理提供天然的異步解耦
 
 ### 3. 數據一致性
+
 - **最終一致性**: 透過 DynamoDB Stream 保證最終數據一致
 - **錯誤處理**: Lambda 失敗會自動重試，確保數據不丟失
 
 ### 4. 業務邏輯分離
+
 - **命令處理**: 專注於業務邏輯執行和狀態變更
 - **查詢處理**: 專注於數據展示和復雜查詢
 
@@ -263,4 +280,4 @@ rm -rf volume/
 
 ## 🤝 貢獻
 
-歡迎提交 Issue 和 Pull Request！特別歡迎針對 CQRS 模式和 DynamoDB Stream 處理的改進建議。 
+歡迎提交 Issue 和 Pull Request！特別歡迎針對 CQRS 模式和 DynamoDB Stream 處理的改進建議。

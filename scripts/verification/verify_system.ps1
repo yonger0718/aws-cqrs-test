@@ -25,11 +25,11 @@ Write-Host "========================================" -ForegroundColor Gray
 try {
     $containers = docker ps --format "table {{.Names}}`t{{.Status}}`t{{.Ports}}"
     Write-Host $containers
-    
+
     # 檢查必要容器
     $eksHandler = docker ps -q --filter "name=eks-handler"
     $localstack = docker ps -q --filter "name=localstack"
-    
+
     if ($eksHandler) {
         Write-Host "✅ EKS Handler 容器正常運行" -ForegroundColor Green
     }
@@ -37,7 +37,7 @@ try {
         Write-Host "❌ EKS Handler 容器未運行！" -ForegroundColor Red
         exit 1
     }
-    
+
     if ($localstack) {
         Write-Host "✅ LocalStack 容器正常運行" -ForegroundColor Green
     }
@@ -94,16 +94,16 @@ Write-Host "📊 列出所有 DynamoDB 表..." -ForegroundColor Yellow
 try {
     $tables = aws --endpoint-url=$AWS_ENDPOINT dynamodb list-tables 2>$null
     Write-Host $tables
-    
+
     Write-Host ""
     Write-Host "📊 檢查表記錄數..." -ForegroundColor Yellow
-    
+
     $commandCount = aws --endpoint-url=$AWS_ENDPOINT dynamodb scan --table-name command-records --select COUNT --query "Count" --output text 2>$null
     Write-Host "命令表記錄數: $commandCount" -ForegroundColor Cyan
-    
+
     $queryCount = aws --endpoint-url=$AWS_ENDPOINT dynamodb scan --table-name notification-records --select COUNT --query "Count" --output text 2>$null
     Write-Host "查詢表記錄數: $queryCount" -ForegroundColor Cyan
-    
+
     if ([int]$queryCount -le [int]$commandCount) {
         Write-Host "✅ 數據一致性檢查通過 (Query: $queryCount <= Command: $commandCount)" -ForegroundColor Green
     }
@@ -131,7 +131,7 @@ try {
         $jsonData = $response.Content | ConvertFrom-Json
         Write-Host "✅ API 響應成功" -ForegroundColor Green
         Write-Host "回應摘要: 成功=$($jsonData.success), 記錄數=$($jsonData.count)" -ForegroundColor Cyan
-        
+
         if ($jsonData.items -and $jsonData.items.Count -gt 0) {
             Write-Host "📊 第一筆記錄範例:" -ForegroundColor Yellow
             $jsonData.items[0] | ConvertTo-Json | Write-Host -ForegroundColor Cyan
@@ -177,13 +177,13 @@ if (Test-Path "test_stream.py") {
 }
 else {
     Write-Host "⚠️ test_stream.py 檔案不存在，執行手動測試..." -ForegroundColor Yellow
-    
+
     # 手動測試邏輯
     $timestamp = [int64](Get-Date -UFormat %s) * 1000
     $transactionId = "manual_test_$timestamp"
-    
+
     Write-Host "📊 插入測試數據: $transactionId" -ForegroundColor Yellow
-    
+
     $item = @{
         transaction_id     = @{S = $transactionId }
         created_at         = @{N = $timestamp.ToString() }
@@ -193,16 +193,16 @@ else {
         platform           = @{S = "WINDOWS" }
         status             = @{S = "PENDING" }
     } | ConvertTo-Json -Compress
-    
+
     try {
         aws --endpoint-url=$AWS_ENDPOINT dynamodb put-item --table-name command-records --item $item 2>$null
         Write-Host "📊 等待 5 秒讓 Stream 處理..." -ForegroundColor Yellow
         Start-Sleep -Seconds 5
-        
+
         $queryResult = aws --endpoint-url=$AWS_ENDPOINT dynamodb query --table-name notification-records --key-condition-expression "user_id = :user_id" --expression-attribute-values '{\":user_id\": {\"S\": \"manual_test_user\"}}' 2>$null
         Write-Host "📊 查詢結果:" -ForegroundColor Yellow
         Write-Host $queryResult -ForegroundColor Cyan
-        
+
         Write-Host "✅ 手動 Stream 測試完成" -ForegroundColor Green
     }
     catch {
@@ -223,11 +223,11 @@ try {
     Write-Host "📊 列出所有 Lambda 函數..." -ForegroundColor Yellow
     $functions = aws --endpoint-url=$AWS_ENDPOINT lambda list-functions --query "Functions[].FunctionName" --output table 2>$null
     Write-Host $functions -ForegroundColor Cyan
-    
+
     Write-Host "🔍 檢查 Stream Processor Lambda..." -ForegroundColor Yellow
     $streamState = aws --endpoint-url=$AWS_ENDPOINT lambda get-function --function-name stream_processor_lambda --query "Configuration.State" --output text 2>$null
     Write-Host "Stream Processor 狀態: $streamState" -ForegroundColor Cyan
-    
+
     if ($streamState -eq "Active") {
         Write-Host "✅ Lambda 函數運行正常" -ForegroundColor Green
     }
@@ -271,7 +271,7 @@ $reportContent = @"
 
 ## 測試結果
 - ✅ Docker 容器狀態: 正常
-- ✅ 服務健康狀態: 正常  
+- ✅ 服務健康狀態: 正常
 - ✅ DynamoDB 表: 正常運行
 - ✅ EKS Handler API: 正常響應
 - ✅ CQRS Stream 處理: 功能正常
@@ -289,4 +289,4 @@ $reportContent | Out-File -FilePath "verification_report_$((Get-Date).ToString('
 Write-Host "📄 測試報告已保存為 verification_report_$((Get-Date).ToString('yyyyMMdd_HHmmss')).md" -ForegroundColor Green
 
 Write-Host ""
-Read-Host "按 Enter 結束驗證程序" 
+Read-Host "按 Enter 結束驗證程序"
