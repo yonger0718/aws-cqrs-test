@@ -26,19 +26,19 @@ jobs:
     - name: Install linting tools
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black isort mypy
+        pip install flake8 black isort mypy types-requests types-boto3
 
     - name: Run Black formatter check
-      run: black --check query-service/
+      run: black --check --line-length=100 query-service/
 
     - name: Run isort import checker
-      run: isort --check-only query-service/
+      run: isort --check-only --profile=black --line-length=100 query-service/
 
     - name: Run Flake8 linter
-      run: flake8 query-service/ --max-line-length=100 --exclude=__pycache__,venv
+      run: flake8 query-service/ --max-line-length=100 --extend-ignore=E203,W503 --exclude=__pycache__,venv
 
     - name: Run MyPy type checker
-      run: mypy query-service/ --ignore-missing-imports || true
+      run: mypy query-service/ --ignore-missing-imports
 
   # 單元測試
   unit-tests:
