@@ -73,7 +73,7 @@ jobs:
 
     - name: Run unit tests with coverage
       run: |
-        pytest query-service/tests/test_eks_handler.py \
+        python -m pytest query-service/tests/test_eks_handler.py \
           --cov=query-service/eks_handler \
           --cov-report=xml \
           --cov-report=term \
@@ -155,7 +155,7 @@ jobs:
       env:
         LOCALSTACK_URL: http://localhost:4566
       run: |
-        pytest query-service/tests/test_integration.py \
+        python -m pytest query-service/tests/test_integration.py \
           --cov=query-service/eks_handler \
           --cov-append \
           --cov-report=xml
