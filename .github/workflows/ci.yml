@@ -14,6 +14,8 @@ jobs:
   lint:
     name: Code Quality Check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
     - uses: actions/checkout@v4
@@ -45,6 +47,9 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     needs: lint
+    permissions:
+      contents: read
+
 
     steps:
     - uses: actions/checkout@v4
@@ -85,6 +90,9 @@ jobs:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: unit-tests
+    permissions:
+      contents: read
+
 
     services:
       localstack:
@@ -153,6 +161,8 @@ jobs:
   #   name: Build and Push Docker Image
   #   runs-on: ubuntu-latest
   #   needs: [unit-tests, integration-tests]
+  #   permissions:
+  #     contents: read
   #   if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
   #   steps:
@@ -183,6 +193,9 @@ jobs:
     name: Security Scanning
     runs-on: ubuntu-latest
     needs: [lint, integration-tests]
+    permissions:
+      contents: read
+      security-events: write
 
     steps:
     - uses: actions/checkout@v4
@@ -211,6 +224,8 @@ jobs:
   #   name: Deploy to Production
   #   runs-on: ubuntu-latest
   #   needs: [docker-build, security-scan]
+  #   permissions:
+  #     contents: read
   #   if: github.ref == 'refs/heads/main'
 
   #   steps:
