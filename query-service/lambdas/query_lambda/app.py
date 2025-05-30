@@ -62,13 +62,19 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             )
 
         else:
-            return {"statusCode": 404, "body": json.dumps({"error": "Invalid query path"})}
+            return {
+                "statusCode": 404,
+                "body": json.dumps({"error": "Invalid query path"}),
+            }
 
         # 檢查 EKS handler 響應
         if response.status_code == 200:
             return {
                 "statusCode": 200,
-                "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
+                "headers": {
+                    "Content-Type": "application/json",
+                    "Access-Control-Allow-Origin": "*",
+                },
                 "body": json.dumps(response.json()),
             }
         else:

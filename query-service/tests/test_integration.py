@@ -59,7 +59,10 @@ class TestDynamoDBIntegration:
         # 讀取記錄 - 使用正確的主鍵
         response = dynamodb_client.get_item(
             TableName="notification-records",
-            Key={"user_id": {"S": test_user_id}, "created_at": {"N": str(current_time)}},
+            Key={
+                "user_id": {"S": test_user_id},
+                "created_at": {"N": str(current_time)},
+            },
         )
 
         assert "Item" in response
@@ -69,7 +72,10 @@ class TestDynamoDBIntegration:
         # 清理測試數據
         dynamodb_client.delete_item(
             TableName="notification-records",
-            Key={"user_id": {"S": test_user_id}, "created_at": {"N": str(current_time)}},
+            Key={
+                "user_id": {"S": test_user_id},
+                "created_at": {"N": str(current_time)},
+            },
         )
 
     def test_command_records_structure(self, dynamodb_client):
@@ -133,7 +139,9 @@ class TestServiceEndToEnd:
         # 2. 通過 API 查詢
         try:
             response = requests.post(
-                f"{EKS_HANDLER_URL}/query/user", json={"user_id": test_user_id}, timeout=10
+                f"{EKS_HANDLER_URL}/query/user",
+                json={"user_id": test_user_id},
+                timeout=10,
             )
 
             # 注意：由於 Lambda 可能未部署，這裡可能會失敗
@@ -148,7 +156,10 @@ class TestServiceEndToEnd:
             try:
                 dynamodb_client.delete_item(
                     TableName="notification-records",
-                    Key={"user_id": {"S": test_user_id}, "created_at": {"N": str(current_time)}},
+                    Key={
+                        "user_id": {"S": test_user_id},
+                        "created_at": {"N": str(current_time)},
+                    },
                 )
             except Exception:
                 pass  # 忽略清理錯誤

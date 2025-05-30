@@ -41,7 +41,10 @@ def generate_notification_record(
         "notification_title": f"測試通知 - {transaction_id}",
         "device_token": f"{platform.lower()}_token_{random.randint(1000, 9999)}",
         "payload": json.dumps(
-            {"title": f"測試通知 - {transaction_id}", "body": f"這是針對用戶 {user_id} 的測試推播"},
+            {
+                "title": f"測試通知 - {transaction_id}",
+                "body": f"這是針對用戶 {user_id} 的測試推播",
+            },
             ensure_ascii=False,
         ),
     }

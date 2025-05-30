@@ -45,7 +45,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # 根據 user_id 查詢最近的推播紀錄
             user_id = body.get("user_id")
             if not user_id:
-                return {"statusCode": 400, "body": json.dumps({"error": "Missing user_id"})}
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Missing user_id"}),
+                }
 
             response = table.query(
                 KeyConditionExpression=Key("user_id").eq(user_id),
@@ -59,7 +62,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # 根據 marketing_id 查詢所有推播紀錄
             marketing_id = body.get("marketing_id")
             if not marketing_id:
-                return {"statusCode": 400, "body": json.dumps({"error": "Missing marketing_id"})}
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Missing marketing_id"}),
+                }
 
             response = table.query(
                 IndexName="marketing_id-index",
@@ -73,7 +79,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             # 根據 transaction_id 查詢失敗的推播紀錄
             transaction_id = body.get("transaction_id")
             if not transaction_id:
-                return {"statusCode": 400, "body": json.dumps({"error": "Missing transaction_id"})}
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Missing transaction_id"}),
+                }
 
             response = table.query(
                 IndexName="transaction_id-status-index",
@@ -85,7 +94,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             items = response.get("Items", [])
 
         else:
-            return {"statusCode": 400, "body": json.dumps({"error": "Invalid query_type"})}
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Invalid query_type"}),
+            }
 
         # 格式化結果
         formatted_items = []
@@ -110,7 +122,11 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "statusCode": 200,
             "headers": {"Content-Type": "application/json"},
             "body": json.dumps(
-                {"success": True, "count": len(formatted_items), "items": formatted_items},
+                {
+                    "success": True,
+                    "count": len(formatted_items),
+                    "items": formatted_items,
+                },
                 default=decimal_to_int,
             ),
         }

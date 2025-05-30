@@ -16,7 +16,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 從 eks-handler 目錄導入 main 模組
 sys.path.insert(
-    0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eks-handler")
+    0,
+    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eks-handler"),
 )
 
 # 必須在設置 sys.path 後導入
@@ -33,7 +34,10 @@ class TestHealthCheck:
         """測試 /health 端點返回正確的狀態"""
         response = client.get("/health")
         assert response.status_code == 200
-        assert response.json() == {"status": "healthy", "service": "query-service-eks-handler"}
+        assert response.json() == {
+            "status": "healthy",
+            "service": "query-service-eks-handler",
+        }
 
 
 class TestRootEndpoint:
@@ -189,7 +193,9 @@ class TestEdgeCases:
     def test_invalid_json_payload(self):
         """測試無效的 JSON 載荷"""
         response = client.post(
-            "/query/user", data="invalid json", headers={"Content-Type": "application/json"}
+            "/query/user",
+            data="invalid json",
+            headers={"Content-Type": "application/json"},
         )
         assert response.status_code == 422
 
