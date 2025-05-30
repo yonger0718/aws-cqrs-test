@@ -70,10 +70,11 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r query-service/requirements.txt
+        pip install -r query-service/tests/requirements-test.txt
 
     - name: Run unit tests with coverage
       run: |
-        python -m pytest query-service/tests/test_eks_handler.py \
+        pytest query-service/tests/test_eks_handler.py \
           --cov=query-service/eks_handler \
           --cov-report=xml \
           --cov-report=term \
@@ -124,6 +125,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r query-service/requirements.txt
+        pip install -r query-service/tests/requirements-test.txt
         pip install awscli-local
 
     - name: Wait for LocalStack
@@ -155,7 +157,7 @@ jobs:
       env:
         LOCALSTACK_URL: http://localhost:4566
       run: |
-        python -m pytest query-service/tests/test_integration.py \
+        pytest query-service/tests/test_integration.py \
           --cov=query-service/eks_handler \
           --cov-append \
           --cov-report=xml
