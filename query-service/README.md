@@ -4,7 +4,7 @@
 
 ## 🏗️ CQRS 架構概述
 
-```
+```txt
 寫入側: Command Table (寫入) → DynamoDB Stream → Stream Processor Lambda → Query Table (讀取)
 查詢側: 使用者 → API Gateway → Query Lambda → EKS Handler → Query Result Lambda → Query Table
 ```
@@ -18,7 +18,7 @@
 
 ## 📁 專案結構
 
-```
+```txt
 aws-hexagon-notify-test/
 ├── docs/                             # 📚 專案文檔
 │   ├── testing/                      # 測試相關文檔
@@ -52,9 +52,9 @@ aws-hexagon-notify-test/
 
 ### Command Table (command-records) - 寫入側
 
-| 欄位名稱              | 類型       | 說明                      |
-|----------------------|------------|---------------------------|
-| `transaction_id`     | String (S) | Partition Key，交易ID     |
+| 欄位名稱             | 類型       | 說明                      |
+| -------------------- | ---------- | ------------------------- |
+| `transaction_id`     | String (S) | Partition Key，交易 ID    |
 | `created_at`         | Number (N) | Sort Key，毫秒時間戳      |
 | `user_id`            | String (S) | 用戶識別碼                |
 | `marketing_id`       | String (S) | 活動代碼                  |
@@ -69,16 +69,16 @@ aws-hexagon-notify-test/
 
 ### Query Table (notification-records) - 查詢側
 
-| 欄位名稱             | 類型       | 說明                                   |
-|----------------------|------------|----------------------------------------|
-| `user_id`            | String (S) | Partition Key                          |
-| `created_at`         | Number (N) | Sort Key，毫秒時間戳，支援倒序查詢     |
-| `transaction_id`     | String (S) | 交易ID                                 |
-| `marketing_id`       | String (S) | 活動代碼                               |
-| `notification_title` | String (S) | 通知標題                               |
-| `status`             | String (S) | SENT / DELIVERED / FAILED              |
-| `platform`           | String (S) | IOS / ANDROID / WEBPUSH                |
-| `error_msg`          | String (S) | 失敗原因（可選）                       |
+| 欄位名稱             | 類型       | 說明                               |
+| -------------------- | ---------- | ---------------------------------- |
+| `user_id`            | String (S) | Partition Key                      |
+| `created_at`         | Number (N) | Sort Key，毫秒時間戳，支援倒序查詢 |
+| `transaction_id`     | String (S) | 交易 ID                            |
+| `marketing_id`       | String (S) | 活動代碼                           |
+| `notification_title` | String (S) | 通知標題                           |
+| `status`             | String (S) | SENT / DELIVERED / FAILED          |
+| `platform`           | String (S) | IOS / ANDROID / WEBPUSH            |
+| `error_msg`          | String (S) | 失敗原因（可選）                   |
 
 **GSI 索引**:
 
@@ -214,7 +214,8 @@ docker exec -it localstack-query-service awslocal dynamodb scan --table-name not
 1. 檢查 Stream 是否啟用：
 
    ```bash
-   docker exec -it localstack-query-service awslocal dynamodb describe-table --table-name command-records --query 'Table.StreamSpecification'
+   docker exec -it localstack-query-service awslocal dynamodb describe-table \
+   --table-name command-records --query 'Table.StreamSpecification'
    ```
 
 2. 檢查事件源映射：

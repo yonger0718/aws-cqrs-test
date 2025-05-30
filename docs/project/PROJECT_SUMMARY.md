@@ -15,8 +15,10 @@
 
 **定義的六邊形架構流程**：
 
-```
-使用者 -> API Gateway -> Lambda Adapter(QueryLambda Adapter) -> EKS 模擬 Handler(QueryHandler) -> Lambda Adapter(QueryResultLambda Adapter) -> DynamoDB (Read-only)
+```txt
+使用者 -> API Gateway -> Lambda Adapter(QueryLambda Adapter) ->
+EKS 模擬 Handler(QueryHandler) ->
+Lambda Adapter(QueryResultLambda Adapter) -> DynamoDB (Read-only)
 ```
 
 **核心要求**：
@@ -32,15 +34,18 @@
 ### 2. **架構演進階段**
 
 **關鍵轉折點**：用戶提出重要問題
+
 > "如果實際使用情況是讀寫分離，能否在 LocalStack 上模擬 `DynamoDB Stream -> Lambda -> Read Table` 的架構？"
 
 **技術決策**：從簡單的只讀架構演進為完整的 CQRS（Command Query Responsibility Segregation）讀寫分離架構
 
 **新架構設計**：
 
-```
-寫入流程: 外部系統 -> Command Table -> DynamoDB Stream -> Stream Processor Lambda -> Query Table
-查詢流程: 使用者 -> API Gateway -> QueryLambda -> EKS Handler -> QueryResultLambda -> Query Table (Read-only)
+```txt
+寫入流程: 外部系統 -> Command Table -> DynamoDB Stream ->
+          Stream Processor Lambda -> Query Table
+查詢流程: 使用者 -> API Gateway -> QueryLambda -> EKS Handler ->
+          QueryResultLambda -> Query Table (Read-only)
 ```
 
 ---
@@ -49,7 +54,7 @@
 
 #### 3.1 專案結構創建
 
-```
+```txt
 query-service/
 ├── docker-compose.yml                 # LocalStack + EKS 服務編排
 ├── infra/localstack/setup.sh         # 雙表 + Stream 初始化
@@ -134,7 +139,7 @@ docker compose up -d
 
 **測試結果**：
 
-```
+```txt
 📊 數據狀態檢查
 ==============================
 命令表記錄數: 12

@@ -4,6 +4,7 @@ import json
 import random
 import time
 from datetime import datetime
+from typing import Optional
 
 import boto3
 
@@ -19,7 +20,9 @@ dynamodb = boto3.resource(
 COMMAND_TABLE_NAME = "command-records"
 
 
-def generate_notification_record(transaction_id: str, user_id: str, marketing_id: str = None):
+def generate_notification_record(
+    transaction_id: str, user_id: str, marketing_id: Optional[str] = None
+):
     """產生模擬的通知記錄"""
     current_time = int(datetime.now().timestamp() * 1000)
 

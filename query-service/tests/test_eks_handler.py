@@ -14,12 +14,13 @@ from fastapi.testclient import TestClient
 # 將上層目錄加入 Python 路徑
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# 現在從 eks-handler 目錄導入 main 模組
+# 從 eks-handler 目錄導入 main 模組
 sys.path.insert(
     0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eks-handler")
 )
 
-from main import app
+# 必須在設置 sys.path 後導入
+from main import app  # noqa: E402
 
 # 建立測試客戶端
 client = TestClient(app)

@@ -57,11 +57,13 @@ $headers = @{
     "Content-Type" = "application/x-amz-json-1.0"
     "X-Amz-Target" = "DynamoDB_20120810.Scan"
 }
-Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body $scanBody
+Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers \
+    -Body $scanBody
 
 # 查詢 notification-records 表
 $scanBody = @{ TableName = "notification-records"; Limit = 10 } | ConvertTo-Json
-Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body $scanBody
+Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers \
+    -Body $scanBody
 ```
 
 ### 🚀 **測試 EKS Handler API**
@@ -74,7 +76,8 @@ Invoke-RestMethod -Uri "http://localhost:8000/" -Method GET
 Invoke-RestMethod -Uri "http://localhost:8000/query/user" -Method GET
 
 # 查詢特定用戶
-Invoke-RestMethod -Uri "http://localhost:8000/query/user?user_id=stream_test_user" -Method GET
+Invoke-RestMethod -Uri "http://localhost:8000/query/user?user_id=stream_test_user" \
+    -Method GET
 ```
 
 ### 🔧 **查詢 Lambda 函數**
@@ -138,12 +141,17 @@ $response.items | Select-Object -First 3 | ForEach-Object {
 ```powershell
 # 命令表記錄數
 $commandBody = @{ TableName = "command-records"; Select = "COUNT" } | ConvertTo-Json
-$headers = @{ "Content-Type" = "application/x-amz-json-1.0"; "X-Amz-Target" = "DynamoDB_20120810.Scan" }
-$commandCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body $commandBody).Count
+$headers = @{
+    "Content-Type" = "application/x-amz-json-1.0"
+    "X-Amz-Target" = "DynamoDB_20120810.Scan"
+}
+$commandCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST `
+    -Headers $headers -Body $commandBody).Count
 
 # 查詢表記錄數
 $queryBody = @{ TableName = "notification-records"; Select = "COUNT" } | ConvertTo-Json
-$queryCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body $queryBody).Count
+$queryCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST `
+    -Headers $headers -Body $queryBody).Count
 
 Write-Host "命令表: $commandCount 筆, 查詢表: $queryCount 筆"
 ```
@@ -171,4 +179,4 @@ Write-Host "命令表: $commandCount 筆, 查詢表: $queryCount 筆"
 .\simple_query.ps1
 ```
 
-�� **享受查詢您的分散式系統數據！**
+**享受查詢您的分散式系統數據！**

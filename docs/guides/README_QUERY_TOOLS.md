@@ -39,7 +39,7 @@ cat MANUAL_QUERY_GUIDE.md
 
 ### 步驟 2：選擇查詢類型
 
-```
+```txt
 請選擇查詢類型：
 1. DynamoDB 表查詢     ← 查看資料庫內容
 2. SQS 佇列查詢        ← 檢查訊息佇列
@@ -73,7 +73,7 @@ cat MANUAL_QUERY_GUIDE.md
 
 **預期輸出：**
 
-```
+```txt
 DynamoDB 表列表:
   - command-records
   - notification-records
@@ -118,7 +118,7 @@ command-records 表內容 (前 5 筆):
 
 **預期輸出：**
 
-```
+```txt
 Lambda 函數列表:
   - 函數名稱: stream_processor_lambda
     運行時: python3.9
@@ -173,7 +173,7 @@ Lambda 函數列表:
 
 **預期輸出：**
 
-```
+```txt
 1. Docker 容器狀態
 NAMES                     STATUS
 eks-handler              Up 2 hours
@@ -205,7 +205,7 @@ localstack-query-service Up 2 hours (healthy)
 
 **預期輸出：**
 
-```
+```txt
 按平台統計:
   ANDROID: 5 筆
   IOS: 3 筆

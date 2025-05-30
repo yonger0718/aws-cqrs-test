@@ -3,10 +3,8 @@
 測試服務之間的實際互動和數據流
 """
 
-import json
 import os
 import time
-from datetime import datetime
 
 import boto3
 import pytest

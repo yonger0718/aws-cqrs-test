@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
 
-import json
-from pprint import pprint
-
 import boto3
 
 # 建立 DynamoDB 客戶端

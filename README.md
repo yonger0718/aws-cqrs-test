@@ -14,7 +14,7 @@
 
 ## 🏗️ 系統架構
 
-```
+```txt
 ┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
 │   Command Side  │───▶│  DynamoDB    │───▶│   Query Side    │
 │   (Write Path)  │    │   Stream     │    │   (Read Path)   │
@@ -30,7 +30,7 @@
 
 ## 📁 專案結構
 
-```
+```txt
 📦 aws-hexagon-notify-test/
 ├── 📚 docs/                          # 專案文檔
 │   ├── 🧪 testing/                   # 測試指南
@@ -115,7 +115,7 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 
 ### 最新測試狀態 ✅
 
-```
+```txt
 🧪 單元測試:    ✅ 9/9 通過 (100%)   ⏱️ 1.45s   📊 76% 覆蓋率
 🔗 整合測試:    ✅ 8/8 通過 (100%)   ⏱️ 11.2s
 ⚡ 效能測試:    ✅ 響應時間 9.72ms
@@ -151,22 +151,22 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ### 🎯 **新手入門**
 
 1. 📖 [最終使用指南](./docs/guides/FINAL_USAGE_GUIDE.md) - 完整的使用說明
-2. 🧪 [快速測試指南](./docs/testing/QUICK_TEST_GUIDE.md) - 5分鐘快速驗證
+2. 🧪 [快速測試指南](./docs/testing/QUICK_TEST_GUIDE.md) - 5 分鐘快速驗證
 
 ### 🏗️ **架構理解**
 
-3. 🏗️ [CQRS 成功實作](./docs/architecture/CQRS_SUCCESS.md) - 架構設計詳解
-4. 📋 [查詢服務需求](./docs/architecture/query_service_requirements_v2.md) - 需求規格
+1. 🏗️ [CQRS 成功實作](./docs/architecture/CQRS_SUCCESS.md) - 架構設計詳解
+2. 📋 [查詢服務需求](./docs/architecture/query_service_requirements_v2.md) - 需求規格
 
 ### 🔧 **開發參考**
 
-5. 🧪 [測試指南](./docs/testing/TESTING_GUIDE.md) - 完整測試說明
-6. 🔍 [手動查詢指南](./docs/guides/MANUAL_QUERY_GUIDE.md) - 查詢工具使用
+1. 🧪 [測試指南](./docs/testing/TESTING_GUIDE.md) - 完整測試說明
+2. 🔍 [手動查詢指南](./docs/guides/MANUAL_QUERY_GUIDE.md) - 查詢工具使用
 
 ### 📊 **專案總結**
 
-7. 📊 [專案開發總結](./docs/project/PROJECT_SUMMARY.md) - 開發歷程回顧
-8. 🎉 [成功實作總結](./docs/project/SUCCESS_SUMMARY.md) - 成果展示
+1. 📊 [專案開發總結](./docs/project/PROJECT_SUMMARY.md) - 開發歷程回顧
+2. 🎉 [成功實作總結](./docs/project/SUCCESS_SUMMARY.md) - 成果展示
 
 ## 🔧 腳本工具
 
@@ -209,7 +209,7 @@ python scripts\development\simulate_writes.py  # 資料模擬
 - 🔄 實現事件驅動的資料同步
 - 📊 達到 76% 的測試覆蓋率
 
-### 🛠️ **開發工具**
+### 💻 **開發成果**
 
 - 🔧 建立 15+ 個自動化腳本
 - 📚 撰寫 12+ 份技術文檔

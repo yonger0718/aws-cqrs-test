@@ -298,4 +298,4 @@ echo "curl \"http://localhost:4566/restapis/$API_ID/dev/query/user?user_id=test_
 echo "curl \"http://localhost:4566/restapis/$API_ID/dev/query/marketing?marketing_id=campaign_2024_new_year\""
 echo "curl \"http://localhost:4566/restapis/$API_ID/dev/query/failures?transaction_id=tx_002\""
 echo ""
-echo "LocalStack initialization completed!" 
+echo "LocalStack initialization completed!"

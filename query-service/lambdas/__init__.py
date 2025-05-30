@@ -1,1 +1,1 @@
-# Query service lambdas package 
+# Query service lambdas package

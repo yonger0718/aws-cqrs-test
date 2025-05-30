@@ -66,7 +66,10 @@
 #### 查看表列表
 
 ```powershell
-$headers = @{"Content-Type" = "application/x-amz-json-1.0"; "X-Amz-Target" = "DynamoDB_20120810.ListTables"}
+$headers = @{
+  "Content-Type" = "application/x-amz-json-1.0"
+  "X-Amz-Target" = "DynamoDB_20120810.ListTables"
+}
 Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST -Headers $headers -Body '{}'
 ```
 

@@ -19,7 +19,8 @@
 ### 🏗️ [architecture/](./architecture/) - 架構文檔
 
 - **[CQRS_SUCCESS.md](./architecture/CQRS_SUCCESS.md)** - CQRS 架構成功實作
-- **[query_service_requirements_v2.md](./architecture/query_service_requirements_v2.md)** - 查詢服務需求 v2
+- **[query_service_requirements_v2.md](./architecture/query_service_requirements_v2.md)**
+  - 查詢服務需求 v2
 - **[query_service_requirements.md](./architecture/query_service_requirements.md)** - 查詢服務原始需求
 
 ### 📊 [project/](./project/) - 專案總結

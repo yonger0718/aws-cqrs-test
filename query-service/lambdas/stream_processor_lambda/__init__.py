@@ -1,1 +1,1 @@
-# Stream processor lambda package 
+# Stream processor lambda package

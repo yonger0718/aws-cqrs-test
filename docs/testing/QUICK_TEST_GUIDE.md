@@ -73,7 +73,7 @@ python test_stream.py
 
 ### ✅ Docker 容器
 
-```
+```txt
 NAMES               STATUS              PORTS
 eks-handler         Up X hours          0.0.0.0:8000->8000/tcp
 localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
@@ -93,10 +93,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 
 ```json
 {
-  "TableNames": [
-    "command-records",
-    "notification-records"
-  ]
+  "TableNames": ["command-records", "notification-records"]
 }
 ```
 
@@ -112,7 +109,7 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 
 ### ✅ CQRS Stream 測試
 
-```
+```txt
 ==============================
 命令表記錄數: X
 查詢表記錄數: Y (Y <= X)
@@ -171,14 +168,14 @@ aws --endpoint-url=http://localhost:4566 lambda list-event-source-mappings
 
 ## 🎯 測試成功標準
 
-| 項目 | 預期結果 | 測試方式 |
-|------|----------|----------|
-| Docker 容器 | 2 個容器運行 | `docker ps` |
-| EKS Handler | HTTP 200 響應 | `curl localhost:8000` |
-| DynamoDB 表 | 2 個表存在 | `aws dynamodb list-tables` |
-| 數據同步 | Query ≤ Command | 記錄數比較 |
-| API 查詢 | JSON 格式響應 | `curl localhost:8000/query/user` |
-| Stream 處理 | 5秒內同步 | `python test_stream.py` |
+| 項目        | 預期結果        | 測試方式                         |
+| ----------- | --------------- | -------------------------------- |
+| Docker 容器 | 2 個容器運行    | `docker ps`                      |
+| EKS Handler | HTTP 200 響應   | `curl localhost:8000`            |
+| DynamoDB 表 | 2 個表存在      | `aws dynamodb list-tables`       |
+| 數據同步    | Query ≤ Command | 記錄數比較                       |
+| API 查詢    | JSON 格式響應   | `curl localhost:8000/query/user` |
+| Stream 處理 | 5 秒內同步      | `python test_stream.py`          |
 
 ---
 
