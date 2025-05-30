@@ -1,0 +1,51 @@
+codecov:
+  require_ci_to_pass: true
+  notify:
+    wait_for_ci: true
+
+coverage:
+  precision: 2
+  round: down
+  range: "70...100"
+
+  status:
+    project:
+      default:
+        target: 70%
+        threshold: 5%
+        if_no_uploads: error
+        if_not_found: success
+        if_ci_failed: error
+    patch:
+      default:
+        target: 70%
+        threshold: 10%
+
+comment:
+  layout: "reach, diff, flags, files"
+  behavior: default
+  require_changes: false
+  require_base: false
+  require_head: true
+
+flags:
+  unittests:
+    paths:
+      - query-service/eks_handler/
+    carryforward: true
+  integration:
+    paths:
+      - query-service/tests/
+    carryforward: true
+
+ignore:
+  - "*/tests/*"
+  - "*/test_*.py"
+  - "*/__pycache__/*"
+  - "*/venv/*"
+  - "*/htmlcov/*"
+  - ".coverage"
+  - "coverage.xml"
+  - "scripts/"
+  - "docs/"
+  - "**/*.md"

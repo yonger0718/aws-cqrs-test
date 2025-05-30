@@ -44,34 +44,25 @@ pip install -r tests/requirements-test.txt
 docker-compose up -d
 
 # 驗證服務狀態
-.\verify_system.ps1
+./scripts/verification/verify_system.sh
 ```
 
 ## 🚀 執行測試
 
 ### 使用自動化腳本（推薦）
 
-```powershell
-# 執行所有測試
-.\run_tests.ps1
+```bash
+# 快速測試
+./scripts/testing/quick_test.sh
 
-# 只執行單元測試
-.\run_tests.ps1 -TestType unit
+# 完整流程測試
+./scripts/testing/test_full_flow.sh
 
-# 只執行整合測試
-.\run_tests.ps1 -TestType integration
-
-# 執行覆蓋率測試
-.\run_tests.ps1 -TestType coverage
-
-# 詳細輸出模式
-.\run_tests.ps1 -Verbose
-
-# 安裝依賴並執行測試
-.\run_tests.ps1 -InstallDeps
+# 系統驗證
+./scripts/verification/verify_system.sh
 ```
 
-### 手動執行測試
+### 手動執行 Python 測試（在 query-service 目錄）
 
 ```bash
 # 單元測試
@@ -80,7 +71,7 @@ pytest tests/test_eks_handler.py -v
 # 整合測試
 pytest tests/test_integration.py -v -s
 
-# 所有測試with覆蓋率
+# 所有測試加覆蓋率
 pytest tests/ --cov=. --cov-report=html
 
 # 執行特定測試

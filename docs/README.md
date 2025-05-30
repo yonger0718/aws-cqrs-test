@@ -6,9 +6,9 @@
 
 ### 🧪 [testing/](./testing/) - 測試相關文檔
 
-- **[TESTING_GUIDE.md](./testing/TESTING_GUIDE.md)** - 完整測試指南
+- **[VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md)** - 系統測試驗證指南 ⭐ **推薦**
 - **[QUICK_TEST_GUIDE.md](./testing/QUICK_TEST_GUIDE.md)** - 快速測試指南
-- **[VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md)** - 系統驗證指南
+- **[TESTING_GUIDE.md](./testing/TESTING_GUIDE.md)** - 完整測試指南
 
 ### 📖 [guides/](./guides/) - 使用指南
 
@@ -31,9 +31,10 @@
 ## 🚀 快速開始
 
 1. **新手入門**: 從 [FINAL_USAGE_GUIDE.md](./guides/FINAL_USAGE_GUIDE.md) 開始
-2. **測試驗證**: 參考 [TESTING_GUIDE.md](./testing/TESTING_GUIDE.md)
-3. **架構理解**: 閱讀 [CQRS_SUCCESS.md](./architecture/CQRS_SUCCESS.md)
-4. **專案回顧**: 查看 [PROJECT_SUMMARY.md](./project/PROJECT_SUMMARY.md)
+2. **測試驗證**: 參考 [VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md) ⭐ **推薦順序**
+3. **快速測試**: 使用 [QUICK_TEST_GUIDE.md](./testing/QUICK_TEST_GUIDE.md)
+4. **架構理解**: 閱讀 [CQRS_SUCCESS.md](./architecture/CQRS_SUCCESS.md)
+5. **專案回顧**: 查看 [PROJECT_SUMMARY.md](./project/PROJECT_SUMMARY.md)
 
 ## 📝 文檔維護
 

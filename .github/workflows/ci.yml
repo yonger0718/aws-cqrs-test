@@ -76,14 +76,17 @@ jobs:
     - name: Run unit tests with coverage
       run: |
         cd query-service
-        pytest tests/test_eks_handler.py -v --cov=eks_handler --cov-report=xml --cov-report=html
+        pytest tests/test_eks_handler.py -v --cov=eks-handler --cov-report=xml --cov-report=html --cov-report=term
 
-    - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v5
       with:
         file: ./query-service/coverage.xml
         flags: unittests
         name: codecov-umbrella
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: true
+        slug: yonger0718/aws-cqrs-test
 
   # 整合測試
   integration-tests:
@@ -154,7 +157,16 @@ jobs:
         LOCALSTACK_URL: http://localhost:4566
       run: |
         cd query-service
-        pytest tests/test_integration.py -v -s
+        pytest tests/test_integration.py -v -s --cov=eks-handler --cov-report=xml --cov-report=html --cov-report=term --cov-append
+
+    - name: Upload integration coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./query-service/coverage.xml
+        flags: integration
+        name: codecov-integration
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
 
   # Docker 映像建置和推送 - 暫時停用
   # docker-build:
@@ -217,7 +229,7 @@ jobs:
     - name: Run safety check
       run: |
         pip install safety
-        safety check -r query-service/requirements.txt --json || true
+        safety scan -r query-service/requirements.txt --json || true
 
   # 部署 (僅在主分支) - 暫時停用
   # deploy:

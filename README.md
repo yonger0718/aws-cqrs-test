@@ -1,5 +1,10 @@
 # 🔔 AWS Hexagon 通知測試專案
 
+[![CI/CD Pipeline](https://github.com/yonger0718/aws-cqrs-test/actions/workflows/ci.yml/badge.svg)](https://github.com/yonger0718/aws-cqrs-test/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/yonger0718/aws-cqrs-test/graph/badge.svg?token=JH9SFXB4YR)](https://codecov.io/gh/yonger0718/aws-cqrs-test)
+[![Python Version](https://img.shields.io/badge/python-3.12-blue.svg)](https://python.org)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 > **六邊形架構 + CQRS 模式** 的推播通知系統實作，使用 LocalStack 模擬 AWS 環境
 
 ## 🎯 專案概述
@@ -51,43 +56,88 @@
 
 ## 🚀 快速開始
 
-### 🔍 **步驟一: 環境驗證**
+### ✅ **步驟一: 系統環境驗證**
 
-```powershell
+```bash
 # 檢查系統環境和依賴
-.\scripts\verification\verify_system.ps1
+./scripts/verification/verify_system.sh
 ```
 
 ### 🐳 **步驟二: 啟動服務**
 
 ```bash
-cd query-service
-docker-compose up -d
+# 重啟並初始化服務
+./scripts/restart_services.sh
 ```
 
-### ⚙️ **步驟三: 初始化系統**
+### ⚙️ **步驟三: 修復 API Gateway**
 
 ```bash
-# 等待 LocalStack 啟動 (約30秒)
-docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
+# 修復 API Gateway 配置 (如果需要)
+./scripts/fix_api_gateway.sh
 ```
 
 ### 🧪 **步驟四: 執行測試**
 
-```powershell
+```bash
 # 快速驗證
-.\scripts\testing\quick_test.ps1
+./scripts/testing/quick_test.sh
 
-# 完整測試套件 (包含覆蓋率)
-.\scripts\testing\run_tests.ps1
+# 完整流程測試
+./scripts/testing/test_full_flow.sh
 ```
 
 ### 🔍 **步驟五: 查詢測試**
 
-```powershell
-# 互動式查詢工具
-.\scripts\queries\manual_query.ps1
+```bash
+# 查詢測試工具
+./scripts/queries/test_query.sh
+
+# 簡化查詢工具
+./scripts/queries/simple_query.sh
 ```
+
+## 📋 推薦測試驗證順序
+
+### 🎯 **完整驗證流程 (新環境/重大更改後)**
+
+```bash
+# 1. 環境準備
+./scripts/verification/verify_system.sh
+
+# 2. 服務管理
+./scripts/restart_services.sh
+./scripts/fix_api_gateway.sh
+
+# 3. 基本功能驗證
+./scripts/testing/quick_test.sh
+
+# 4. 查詢功能測試
+./scripts/queries/simple_query.sh --all
+
+# 5. CQRS 流程驗證
+./scripts/testing/test_full_flow.sh
+
+# 6. Python 單元與整合測試
+cd query-service
+pytest tests/test_eks_handler.py -v
+pytest tests/test_integration.py -v
+```
+
+### ⚡ **快速驗證 (日常開發)**
+
+```bash
+# 快速健康檢查
+./scripts/testing/quick_test.sh
+
+# 查詢功能確認
+./scripts/queries/simple_query.sh --all
+
+# Python 測試
+cd query-service && pytest tests/ -v
+```
+
+**📖 詳細說明：** [測試驗證指南](./docs/testing/VERIFICATION_GUIDE.md)
 
 ## 📋 核心功能
 
@@ -142,7 +192,7 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ### 🐳 **DevOps 工具**
 
 - **Docker Compose**: 容器編排
-- **PowerShell**: 自動化腳本
+- **Bash/Shell**: 自動化腳本
 - **GitHub Actions**: CI/CD 流水線
 - **pre-commit**: 代碼品質檢查
 
@@ -172,31 +222,39 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 
 ### 🧪 **測試工具**
 
-```powershell
-.\scripts\testing\run_tests.ps1      # 完整測試套件
-.\scripts\testing\quick_test.ps1     # 快速測試
-python scripts\testing\check_tables.py  # DynamoDB 檢查
+```bash
+./scripts/testing/quick_test.sh       # 快速測試
+./scripts/testing/test_full_flow.sh   # 完整流程測試
+./scripts/testing/test_coverage.sh    # 測試覆蓋率報告 ⭐ 新增
 ```
 
 ### 🔍 **查詢工具**
 
-```powershell
-.\scripts\queries\manual_query.ps1    # 互動式查詢
-.\scripts\queries\simple_query.ps1    # 簡單查詢
-.\scripts\queries\query_services.ps1  # 進階查詢
+```bash
+./scripts/queries/test_query.sh       # 查詢測試工具
+./scripts/queries/simple_query.sh     # 簡化查詢工具
 ```
 
 ### ✅ **驗證工具**
 
-```powershell
-.\scripts\verification\verify_system.ps1  # 系統驗證
-.\scripts\verification\verify_system.bat  # 批次檔版本
+```bash
+./scripts/verification/verify_system.sh  # 系統驗證
 ```
 
 ### 🛠️ **開發工具**
 
-```python
-python scripts\development\simulate_writes.py  # 資料模擬
+```bash
+./scripts/restart_services.sh        # 服務重啟
+./scripts/fix_api_gateway.sh         # API Gateway 修復
+python scripts/development/simulate_writes.py  # 資料模擬
+```
+
+### 🧪 **Python 測試 (在 query-service 目錄)**
+
+```bash
+pytest tests/test_eks_handler.py -v     # 單元測試
+pytest tests/test_integration.py -v -s  # 整合測試
+pytest tests/ --cov=. --cov-report=html # 覆蓋率測試
 ```
 
 ## 🎉 專案成果

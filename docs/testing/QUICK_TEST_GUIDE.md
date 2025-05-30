@@ -1,91 +1,153 @@
 # 🚀 快速測試指南
 
-## 💫 一鍵驗證工具
+## 📋 測試驗證順序
 
-您有三種方式可以快速驗證整個系統：
+按以下順序執行測試可確保系統完整驗證：
 
-### 1️⃣ **PowerShell 腳本 (推薦)**
-
-```powershell
-.\verify_system.ps1
-```
-
-### 2️⃣ **Windows Batch 腳本**
-
-```cmd
-verify_system.bat
-```
-
-### 3️⃣ **Python 測試腳本**
+### 🎯 **推薦測試流程**
 
 ```bash
-python test_stream.py
-python test_api.py
+# 1. 新環境設置與驗證
+./scripts/verification/verify_system.sh
+
+# 2. 服務管理準備
+./scripts/restart_services.sh
+./scripts/fix_api_gateway.sh  # 修復 API Gateway
+
+# 3. 基本功能驗證
+./scripts/testing/quick_test.sh
+
+# 4. 查詢功能測試
+./scripts/queries/simple_query.sh --all
+
+# 5. 完整流程驗證
+./scripts/testing/test_full_flow.sh
+
+# 6. Python 測試（在 query-service 目錄）
+cd query-service
+pytest tests/test_eks_handler.py -v
+pytest tests/test_integration.py -v
 ```
 
 ---
 
-## 🔧 手動驗證指令 (選擇性)
+## 💫 一鍵快速驗證
 
-### ✅ 快速狀態檢查
+### 🟢 **系統環境驗證**
 
 ```bash
-# 檢查容器狀態
-docker ps
-
-# 檢查 EKS Handler
-curl http://localhost:8000/
-
-# 檢查 DynamoDB 表數量
-aws --endpoint-url=http://localhost:4566 dynamodb list-tables
+./scripts/verification/verify_system.sh
 ```
 
-### 📊 數據一致性檢查
+**檢查項目：**
+
+- ✅ 必要工具（Docker、AWS CLI、jq、curl、Python）
+- ✅ Docker 服務狀態
+- ✅ 專案目錄結構
+- ✅ 腳本執行權限
+- ✅ LocalStack 和 EKS Handler 容器
+- ✅ AWS 資源（DynamoDB 表、Lambda 函數、API Gateway）
+
+### 🟢 **快速健康檢查**
 
 ```bash
-# 命令表記錄數
-aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name command-records --select COUNT
-
-# 查詢表記錄數
-aws --endpoint-url=http://localhost:4566 dynamodb scan --table-name notification-records --select COUNT
+./scripts/testing/quick_test.sh
 ```
 
-### 🧪 API 功能測試
+**檢查項目：**
+
+- ✅ EKS Handler 健康檢查
+- ✅ LocalStack 服務狀態
+- ✅ DynamoDB 表存在性
+- ✅ 基本查詢 API 功能
+
+### 🟢 **簡化查詢工具**
 
 ```bash
-# 查詢所有記錄
-curl "http://localhost:8000/query/user"
+# 全自動執行
+./scripts/queries/simple_query.sh --all
 
-# 查詢特定用戶
-curl "http://localhost:8000/query/user?user_id=stream_test_user"
+# 或進入互動模式
+./scripts/queries/simple_query.sh
 ```
 
-### 🎯 Stream 處理測試
+**功能包括：**
+
+- ✅ 服務狀態檢查
+- ✅ DynamoDB 表統計
+- ✅ 用戶查詢測試
+- ✅ 行銷活動查詢測試
+
+### 🟢 **完整流程測試**
 
 ```bash
-# 執行完整的 CQRS 測試
-python test_stream.py
+./scripts/testing/test_full_flow.sh
+```
+
+**CQRS 流程驗證：**
+
+- ✅ 插入命令記錄到 command-records 表
+- ✅ DynamoDB Stream 觸發處理
+- ✅ 資料同步到 notification-records 表
+- ✅ 查詢服務正確回傳數據
+- ✅ API Gateway 功能測試
+
+---
+
+## 🐍 Python 測試
+
+### 單元測試
+
+```bash
+cd query-service
+pytest tests/test_eks_handler.py -v
+```
+
+**測試覆蓋：**
+
+- ✅ 健康檢查端點
+- ✅ 用戶查詢功能
+- ✅ 行銷查詢功能
+- ✅ 失敗記錄查詢
+- ✅ 錯誤處理機制
+
+### 整合測試
+
+```bash
+pytest tests/test_integration.py -v
+```
+
+**測試覆蓋：**
+
+- ✅ DynamoDB 整合
+- ✅ 端到端工作流
+- ✅ CQRS 一致性
+- ✅ 效能測試
+
+### 覆蓋率測試
+
+```bash
+pytest tests/ --cov=. --cov-report=html
 ```
 
 ---
 
-## 📋 預期正常結果
+## 📊 預期正常結果
 
 ### ✅ Docker 容器
 
 ```txt
-NAMES               STATUS              PORTS
-eks-handler         Up X hours          0.0.0.0:8000->8000/tcp
-localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
+NAMES                      STATUS                 PORTS
+eks-handler                Up X hours             0.0.0.0:8000->8000/tcp
+localstack-query-service   Up X hours (healthy)   127.0.0.1:4566->4566/tcp
 ```
 
 ### ✅ EKS Handler 響應
 
 ```json
 {
-  "message": "Query Service is running",
-  "service": "query-service",
-  "version": "1.0.0"
+  "status": "healthy",
+  "service": "query-service-eks-handler"
 }
 ```
 
@@ -97,24 +159,30 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 }
 ```
 
-### ✅ API 查詢響應
+### ✅ 查詢 API 響應
 
 ```json
 {
   "success": true,
-  "count": X,
-  "items": [...]
+  "count": 3,
+  "items": [
+    {
+      "user_id": "test_user_001",
+      "transaction_id": "test_xxx",
+      "marketing_id": "campaign_2024_test",
+      "notification_title": "測試通知",
+      "status": "DELIVERED",
+      "platform": "IOS"
+    }
+  ]
 }
 ```
 
-### ✅ CQRS Stream 測試
+### ✅ Python 測試結果
 
 ```txt
-==============================
-命令表記錄數: X
-查詢表記錄數: Y (Y <= X)
-==============================
-✅ 找到同步的記錄: {...}
+單元測試:    ✅ 9/9 通過 (100%)   ⏱️ ~0.6s
+整合測試:    ✅ 8/8 通過 (100%)   ⏱️ ~0.5s
 ```
 
 ---
@@ -124,27 +192,27 @@ localstack-...      Up X hours          0.0.0.0:4566->4566/tcp
 ### ❌ 容器未運行
 
 ```bash
-# 重新啟動所有服務
-docker compose up -d
+# 檢查容器狀態
+docker ps
 
-# 等待服務啟動
-sleep 10
+# 重新啟動服務
+./scripts/restart_services.sh
 
-# 重新初始化
-./infra/localstack/setup.sh
+# 等待服務完全啟動
+sleep 15
 ```
 
-### ❌ API 無法連接
+### ❌ API Gateway 問題
 
 ```bash
-# 檢查 EKS Handler 日誌
-docker logs eks-handler
+# 修復 API Gateway 配置
+./scripts/fix_api_gateway.sh
 
-# 重啟 EKS Handler
-docker restart eks-handler
+# 驗證修復結果
+./scripts/queries/test_query.sh
 ```
 
-### ❌ DynamoDB 錯誤
+### ❌ DynamoDB 連接失敗
 
 ```bash
 # 檢查 LocalStack 日誌
@@ -152,41 +220,52 @@ docker logs localstack-query-service
 
 # 重啟 LocalStack
 docker restart localstack-query-service
+
+# 重新初始化
+cd query-service && docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ```
 
-### ❌ Stream 不同步
+### ❌ Python 測試依賴問題
 
 ```bash
-# 檢查 Lambda 函數
-aws --endpoint-url=http://localhost:4566 lambda list-functions
-
-# 檢查事件源映射
-aws --endpoint-url=http://localhost:4566 lambda list-event-source-mappings
+cd query-service
+pip install -r requirements.txt
+pip install -r tests/requirements-test.txt
 ```
 
 ---
 
 ## 🎯 測試成功標準
 
-| 項目        | 預期結果        | 測試方式                         |
-| ----------- | --------------- | -------------------------------- |
-| Docker 容器 | 2 個容器運行    | `docker ps`                      |
-| EKS Handler | HTTP 200 響應   | `curl localhost:8000`            |
-| DynamoDB 表 | 2 個表存在      | `aws dynamodb list-tables`       |
-| 數據同步    | Query ≤ Command | 記錄數比較                       |
-| API 查詢    | JSON 格式響應   | `curl localhost:8000/query/user` |
-| Stream 處理 | 5 秒內同步      | `python test_stream.py`          |
+| 測試項目  | 預期結果           | 驗證方式                     |
+| --------- | ------------------ | ---------------------------- |
+| 系統環境  | 工具齊全，服務運行 | `verify_system.sh`           |
+| 基本功能  | 所有服務正常響應   | `quick_test.sh`              |
+| 查詢功能  | 正確返回數據       | `simple_query.sh`            |
+| CQRS 流程 | Stream 處理成功    | `test_full_flow.sh`          |
+| 單元測試  | 9/9 通過           | `pytest test_eks_handler.py` |
+| 整合測試  | 8/8 通過           | `pytest test_integration.py` |
 
 ---
 
-## 📄 生成測試報告
+## 📝 快速檢查清單
 
-所有驗證腳本都會自動生成測試報告：
+- [ ] 系統驗證通過
+- [ ] Docker 容器運行
+- [ ] LocalStack 健康檢查通過
+- [ ] EKS Handler 響應正常
+- [ ] DynamoDB 表存在且有數據
+- [ ] 查詢 API 返回正確結果
+- [ ] CQRS 流程數據同步成功
+- [ ] Python 測試全部通過
 
-- **PowerShell**: `verification_report_YYYYMMDD_HHMMSS.md`
-- **Python**: 控制台輸出詳細結果
-- **手動測試**: 需要自行記錄結果
+**當所有項目都打勾時，您的系統就完全可用了！** 🎉
 
 ---
 
-**🎉 測試通過後，您的 CQRS 架構就完全可用了！**
+## 🔗 相關文檔
+
+- 📋 [完整測試指南](./TESTING_GUIDE.md)
+- 🔍 [查詢工具指南](../guides/MANUAL_QUERY_GUIDE.md)
+- 🎯 [最終使用指南](../guides/FINAL_USAGE_GUIDE.md)
+- 🏗️ [CQRS 架構說明](../architecture/CQRS_SUCCESS.md)

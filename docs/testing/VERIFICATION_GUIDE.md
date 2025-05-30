@@ -1,352 +1,282 @@
-# 🔍 AWS Hexagon Notify Test - 完整驗證測試指南
+# 🔍 系統測試驗證指南
 
-## 📋 測試環境檢查清單
+## 📋 完整測試驗證流程
 
-### ✅ 前置條件
-
-- [x] Docker Desktop 正在運行
-- [x] LocalStack 容器已啟動 (port 4566)
-- [x] EKS Handler 容器已啟動 (port 8000)
-- [x] DynamoDB 表已創建並初始化
-- [x] Lambda 函數已部署
+這份指南提供了系統性的測試驗證步驟，確保 AWS CQRS 通知系統的完整功能性。
 
 ---
 
-## 🚀 快速驗證步驟
+## 🎯 推薦驗證順序
 
-### 1. **服務狀態檢查**
-
-#### 檢查 Docker 容器
+### **步驟 1: 環境準備與系統驗證**
 
 ```bash
-# 查看運行中的容器
-docker ps
-
-# 應該看到兩個容器：
-# - eks-handler (port 8000)
-# - localstack (port 4566)
+# 檢查系統環境和工具
+./scripts/verification/verify_system.sh
 ```
 
-#### 檢查服務健康狀態
+**預期結果：**
+
+- ✅ 所有必要工具已安裝（Docker、AWS CLI、jq、curl、Python）
+- ✅ Docker 服務正在運行
+- ✅ 容器狀態健康
+- ✅ 腳本有執行權限
+
+### **步驟 2: 服務狀態重置**
 
 ```bash
-# 檢查 EKS Handler 健康狀態
-curl http://localhost:8000/
+# 重啟所有服務（可選）
+./scripts/restart_services.sh
 
-# 檢查 LocalStack 健康狀態
-curl http://localhost:4566/health
+# 修復 API Gateway 配置
+./scripts/fix_api_gateway.sh
 ```
 
-### 2. **DynamoDB 表狀態檢查**
+**用途：**
 
-#### 列出所有表
+- 🔄 確保所有服務狀態一致
+- 🔧 修復可能的配置問題
+- 🚀 為測試準備最佳環境
+
+### **步驟 3: 基本功能健康檢查**
 
 ```bash
-aws --endpoint-url=http://localhost:4566 dynamodb list-tables
+# 快速健康檢查
+./scripts/testing/quick_test.sh
 ```
 
-#### 檢查命令表記錄數
+**驗證項目：**
+
+- ✅ EKS Handler 服務響應 (port 8000)
+- ✅ LocalStack 服務可用 (port 4566)
+- ✅ DynamoDB 表存在且可訪問
+- ✅ 基本 API 端點功能
+
+### **步驟 4: 查詢功能詳細測試**
 
 ```bash
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name command-records \
-  --select COUNT
+# 全自動查詢測試
+./scripts/queries/simple_query.sh --all
 ```
 
-#### 檢查查詢表記錄數
+**測試覆蓋：**
+
+- ✅ 服務連接性檢查
+- ✅ DynamoDB 表數據統計
+- ✅ 用戶查詢 API 測試
+- ✅ 行銷活動查詢測試
+- ✅ 錯誤處理驗證
+
+### **步驟 5: CQRS 完整流程驗證**
 
 ```bash
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name notification-records \
-  --select COUNT
+# 端到端 CQRS 流程測試
+./scripts/testing/test_full_flow.sh
 ```
 
-### 3. **Lambda 函數檢查**
+**CQRS 流程：**
 
-#### 列出所有 Lambda 函數
+1. ✅ 插入測試命令到 `command-records` 表
+2. ✅ DynamoDB Stream 自動觸發
+3. ✅ Lambda 函數處理數據轉換
+4. ✅ 同步到 `notification-records` 表
+5. ✅ 查詢服務返回正確數據
+6. ✅ API Gateway 路由功能
+
+### **步驟 6: Python 單元與整合測試**
 
 ```bash
-aws --endpoint-url=http://localhost:4566 lambda list-functions
+cd query-service
+
+# 單元測試
+pytest tests/test_eks_handler.py -v
+
+# 整合測試
+pytest tests/test_integration.py -v
+
+# 覆蓋率測試（可選）
+pytest tests/ --cov=. --cov-report=html
 ```
 
-#### 檢查 Stream Processor Lambda
+**測試範圍：**
 
-```bash
-aws --endpoint-url=http://localhost:4566 lambda get-function \
-  --function-name stream_processor_lambda
-```
-
-### 4. **DynamoDB Stream 狀態檢查**
-
-#### 檢查 Stream 配置
-
-```bash
-aws --endpoint-url=http://localhost:4566 dynamodb describe-table \
-  --table-name command-records \
-  --query 'Table.StreamSpecification'
-```
-
-#### 檢查事件源映射
-
-```bash
-aws --endpoint-url=http://localhost:4566 lambda list-event-source-mappings
-```
+- ✅ 所有 API 端點功能
+- ✅ DynamoDB 整合測試
+- ✅ 錯誤處理和邊界條件
+- ✅ 效能和一致性驗證
 
 ---
 
-## 🧪 核心功能測試
+## 📊 驗證成功指標
 
-### 測試 1: EKS Handler 直接調用
+### 🟢 系統級指標
 
-```bash
-# 測試健康檢查端點
-curl -X GET http://localhost:8000/
+| 檢查項目        | 成功標準              | 驗證命令              |
+| --------------- | --------------------- | --------------------- |
+| **容器狀態**    | 2 個容器 Up 狀態      | `docker ps`           |
+| **服務響應**    | HTTP 200/健康檢查通過 | `curl localhost:8000` |
+| **DynamoDB 表** | 2 個表存在且可訪問    | AWS CLI 查詢          |
+| **Lambda 函數** | 函數存在且可執行      | LocalStack API        |
 
-# 測試查詢用戶推播記錄
-curl -X GET "http://localhost:8000/query/user?user_id=stream_test_user"
+### 🟢 功能級指標
 
-# 測試查詢所有推播記錄
-curl -X GET "http://localhost:8000/query/user"
-```
+| 測試類型     | 成功標準             | 測試時間 |
+| ------------ | -------------------- | -------- |
+| **快速測試** | 所有檢查項目通過     | ~30 秒   |
+| **查詢測試** | API 返回正確格式數據 | ~45 秒   |
+| **流程測試** | CQRS 數據同步成功    | ~60 秒   |
+| **單元測試** | 9/9 測試通過         | ~5 秒    |
+| **整合測試** | 8/8 測試通過         | ~8 秒    |
 
-### 測試 2: DynamoDB 數據查詢
-
-#### 查詢命令表 (Command Side)
-
-```bash
-# 掃描所有記錄
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name command-records
-
-# 查詢特定交易ID
-aws --endpoint-url=http://localhost:4566 dynamodb get-item \
-  --table-name command-records \
-  --key '{
-    "transaction_id": {"S": "tx_stream_test_1748489873"},
-    "created_at": {"N": "1748489873870"}
-  }'
-```
-
-#### 查詢通知表 (Query Side)
+### 🟢 數據級指標
 
 ```bash
-# 掃描所有記錄
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name notification-records
-
-# 查詢特定用戶記錄
-aws --endpoint-url=http://localhost:4566 dynamodb query \
-  --table-name notification-records \
-  --key-condition-expression "user_id = :user_id" \
-  --expression-attribute-values '{
-    ":user_id": {"S": "stream_test_user"}
-  }'
-```
-
-### 測試 3: CQRS Stream 處理功能
-
-#### 使用現有測試腳本
-
-```bash
-# 執行 CQRS Stream 測試
-python test_stream.py
-```
-
-#### 手動測試 Stream 處理
-
-```bash
-# 1. 記錄當前查詢表記錄數
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name notification-records \
-  --select COUNT
-
-# 2. 插入新記錄到命令表
-aws --endpoint-url=http://localhost:4566 dynamodb put-item \
-  --table-name command-records \
-  --item '{
-    "transaction_id": {"S": "manual_test_'$(date +%s)'"},
-    "created_at": {"N": "'$(date +%s%3N)'"},
-    "user_id": {"S": "manual_test_user"},
-    "marketing_id": {"S": "manual_campaign"},
-    "notification_title": {"S": "手動測試推播"},
-    "platform": {"S": "ANDROID"},
-    "status": {"S": "PENDING"}
-  }'
-
-# 3. 等待 5 秒讓 Stream 處理
-echo "等待 Stream 處理..."
-sleep 5
-
-# 4. 檢查查詢表是否有新記錄
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name notification-records \
-  --select COUNT
-
-# 5. 查詢具體的同步記錄
-aws --endpoint-url=http://localhost:4566 dynamodb query \
-  --table-name notification-records \
-  --key-condition-expression "user_id = :user_id" \
-  --expression-attribute-values '{
-    ":user_id": {"S": "manual_test_user"}
-  }'
+# 預期數據狀態
+command-records:      ≥ 3 筆記錄
+notification-records: ≥ 3 筆記錄
+查詢 API 響應:        JSON 格式，包含 success、count、items
 ```
 
 ---
 
-## 🔧 API Gateway 測試
+## 🚨 故障排除指南
 
-### 測試 Lambda 函數直接調用
+### ❌ 環境問題
+
+**症狀：** 工具未安裝或版本不對
 
 ```bash
-# 測試 Query Lambda
-aws --endpoint-url=http://localhost:4566 lambda invoke \
-  --function-name query_lambda \
-  --payload '{"user_id": "stream_test_user"}' \
-  output.json && cat output.json
+# Ubuntu/Debian
+sudo apt update && sudo apt install docker.io awscli jq curl python3 python3-pip
 
-# 測試 Query Result Lambda
-aws --endpoint-url=http://localhost:4566 lambda invoke \
-  --function-name query_result_lambda \
-  --payload '{"user_id": "stream_test_user"}' \
-  output.json && cat output.json
+# 檢查版本
+docker --version
+aws --version
+python3 --version
 ```
 
-### 測試 API Gateway 端點
+### ❌ 容器問題
+
+**症狀：** 容器未運行或不健康
 
 ```bash
-# 列出 API Gateway
-aws --endpoint-url=http://localhost:4566 apigateway get-rest-apis
+# 檢查容器狀態
+docker ps -a
 
-# 如果 API Gateway 正常，測試端點
-# (需要替換實際的 API ID)
-curl -X GET "http://localhost:4566/restapis/{api-id}/test/_user_request_/query/user"
-```
-
----
-
-## 📊 性能和監控測試
-
-### 測試數據一致性
-
-```bash
-# 檢查兩個表的記錄數是否合理（Query 表 <= Command 表）
-echo "命令表記錄數:"
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name command-records \
-  --select COUNT \
-  --query 'Count'
-
-echo "查詢表記錄數:"
-aws --endpoint-url=http://localhost:4566 dynamodb scan \
-  --table-name notification-records \
-  --select COUNT \
-  --query 'Count'
-```
-
-### 測試查詢性能
-
-```bash
-# 測試大量數據查詢性能
-time curl -X GET "http://localhost:8000/query/user"
-
-# 測試特定用戶查詢性能
-time curl -X GET "http://localhost:8000/query/user?user_id=stream_test_user"
-```
-
----
-
-## 🚨 故障排除指令
-
-### 查看容器日誌
-
-```bash
-# 查看 EKS Handler 日誌
+# 查看容器日誌
 docker logs eks-handler
-
-# 查看 LocalStack 日誌
 docker logs localstack-query-service
 
-# 持續監控日誌
-docker logs -f eks-handler
-```
-
-### 重啟服務
-
-```bash
-# 重啟 EKS Handler
+# 重啟問題容器
 docker restart eks-handler
-
-# 重啟 LocalStack
 docker restart localstack-query-service
-
-# 重啟所有服務
-docker compose restart
 ```
 
-### 清理和重新初始化
+### ❌ 連接問題
+
+**症狀：** API 無法訪問
 
 ```bash
-# 停止所有服務
-docker compose down
+# 檢查端口占用
+netstat -tlnp | grep -E "(8000|4566)"
 
-# 清理 volume 數據
-docker volume prune
+# 測試連接
+curl -v http://localhost:8000/health
+curl -v http://localhost:4566/health
 
-# 重新啟動並初始化
-docker compose up -d
-sleep 10
-./infra/localstack/setup.sh
+# 檢查防火牆
+sudo ufw status
+```
+
+### ❌ 數據問題
+
+**症狀：** DynamoDB 表不存在或數據不同步
+
+```bash
+# 重新初始化
+cd query-service
+docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
+
+# 檢查表狀態
+aws --endpoint-url=http://localhost:4566 dynamodb list-tables
+aws --endpoint-url=http://localhost:4566 dynamodb describe-table --table-name command-records
+```
+
+### ❌ Python 依賴問題
+
+**症狀：** 測試模組無法導入
+
+```bash
+cd query-service
+pip install -r requirements.txt
+pip install -r tests/requirements-test.txt
+
+# 檢查安裝
+pip list | grep -E "(pytest|boto3|fastapi)"
 ```
 
 ---
 
-## 🎯 預期結果參考
+## 🎯 驗證檢查清單
 
-### ✅ 正常運行指標
+### 🔍 **逐步驗證清單**
 
-- **EKS Handler**: HTTP 200 響應，JSON 格式數據
-- **DynamoDB 表**: 兩個表都存在且有數據
-- **Stream 處理**: 5 秒內數據同步成功
-- **Lambda 函數**: 3 個函數正常部署
-- **數據一致性**: Query 表記錄數 <= Command 表記錄數
+- [ ] **環境驗證** - `verify_system.sh` 通過
+- [ ] **服務重啟** - `restart_services.sh` 完成
+- [ ] **API 修復** - `fix_api_gateway.sh` 成功
+- [ ] **健康檢查** - `quick_test.sh` 全部項目通過
+- [ ] **查詢測試** - `simple_query.sh --all` 成功
+- [ ] **流程測試** - `test_full_flow.sh` CQRS 同步成功
+- [ ] **單元測試** - `pytest test_eks_handler.py` 9/9 通過
+- [ ] **整合測試** - `pytest test_integration.py` 8/8 通過
 
-### ⚠️ 常見問題
+### 🎉 **完成狀態**
 
-- **502 錯誤**: API Gateway 整合問題，但 EKS Handler 直接調用正常
-- **數據不同步**: 檢查 DynamoDB Stream 和事件源映射
-- **容器無法啟動**: 檢查端口占用和 Docker 資源
+當所有項目都勾選時：
+
+- ✅ 您的 AWS CQRS 通知系統完全正常運行
+- ✅ 所有核心功能都經過驗證
+- ✅ 系統準備好接受實際工作負載
+- ✅ 可以開始實際的開發和部署工作
 
 ---
 
-## 📝 測試報告範本
+## 📈 效能基準
 
-### 測試執行記錄
+### ⚡ 執行時間基準
 
-```txt
-測試時間: _____________
-測試人員: _____________
+```bash
+系統驗證:     ~15-30秒
+快速測試:     ~30-45秒
+查詢測試:     ~45-60秒
+流程測試:     ~60-90秒
+Python 測試:  ~10-15秒
+總驗證時間:   ~3-4分鐘
+```
 
-服務狀態:
-[ ] EKS Handler 正常運行
-[ ] LocalStack 正常運行
-[ ] DynamoDB 表正常訪問
+### 📊 資源使用基準
 
-功能測試:
-[ ] EKS Handler 查詢成功
-[ ] DynamoDB Stream 處理成功
-[ ] 數據同步正常
-[ ] Lambda 函數運行正常
-
-性能測試:
-[ ] 查詢響應時間 < 1 秒
-[ ] Stream 處理延遲 < 5 秒
-[ ] 數據一致性 100%
-
-問題記錄:
-_________________________________
-_________________________________
+```bash
+容器記憶體使用: <1GB
+CPU 使用率:     <50%
+磁碟空間:       <2GB
+網路延遲:       <100ms (本地)
 ```
 
 ---
 
-**驗證完成後，您將確認整個 CQRS 架構正常運行！** 🎉
+## 🔗 相關文檔
+
+- 🚀 [快速測試指南](./QUICK_TEST_GUIDE.md) - 簡化版測試流程
+- 📋 [完整測試指南](./TESTING_GUIDE.md) - 詳細測試說明
+- 🔧 [腳本工具索引](../../scripts/README.md) - 所有腳本說明
+- 🎯 [最終使用指南](../guides/FINAL_USAGE_GUIDE.md) - 完整系統使用
+
+**立即開始驗證您的系統：**
+
+```bash
+# 開始完整驗證流程
+./scripts/verification/verify_system.sh
+```
+
+> **💡 提示：** 建議在新環境或重大更改後執行完整驗證流程，確保系統穩定性。

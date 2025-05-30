@@ -6,7 +6,7 @@ pytest-mock==3.12.0
 
 # HTTP 測試
 httpx==0.25.2
-requests==2.31.0
+requests==2.32.3
 
 # AWS SDK (用於整合測試)
 boto3==1.26.137
