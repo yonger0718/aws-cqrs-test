@@ -30,7 +30,7 @@ services:
   eks-handler:
     container_name: eks-handler
     build:
-      context: ./eks-handler
+      context: ./eks_handler
       dockerfile: Dockerfile
     ports:
       - "8000:8000"

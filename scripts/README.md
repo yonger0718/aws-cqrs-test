@@ -1,67 +1,66 @@
-# 🔧 專案腳本索引
+# 🛠️ 腳本工具集
 
-本目錄包含 AWS CQRS 通知測試專案的所有腳本工具。
+這個目錄包含各種自動化腳本，幫助你管理和測試專案。
 
 ## 📁 目錄結構
 
-### 🧪 [testing/](./testing/) - 測試腳本
+```txt
+scripts/
+├── 🧪 testing/                    # 測試相關腳本
+│   ├── test_coverage.sh           # 覆蓋率測試（已更新支援根目錄）
+│   ├── test_full_flow.sh          # 完整流程測試
+│   └── quick_test.sh              # 快速健康檢查
+├── 🔍 queries/                    # 查詢工具
+├── ✅ verification/               # 驗證腳本
+├── 🔧 development/                # 開發工具
+├── 🆕 run_tests.sh                # 統一測試執行腳本（新增）
+├── restart_services.sh            # 服務重啟
+└── fix_api_gateway.sh            # API Gateway 修復
+```
 
-- **[quick_test.sh](./testing/quick_test.sh)** - 快速測試腳本
-  - 快速健康檢查
-  - 基本功能驗證
-- **[test_full_flow.sh](./testing/test_full_flow.sh)** - 完整流程測試腳本
-  - 測試從命令寫入到查詢的完整流程
-  - 驗證 DynamoDB Stream 和 Lambda 處理
-  - 測試查詢服務和 API Gateway
-- **[test_coverage.sh](./testing/test_coverage.sh)** - 測試覆蓋率報告生成器 ⭐ **新增**
-  - 執行所有測試並生成詳細覆蓋率報告
-  - 自動檢查覆蓋率閾值 (70%)
-  - 生成 XML 和 HTML 格式報告
-  - 支援 Codecov 整合
+## 🆕 新增功能
 
-### 🔍 [queries/](./queries/) - 查詢腳本
+### 統一測試執行腳本
 
-- **[test_query.sh](./queries/test_query.sh)** - 查詢測試工具
-  - 測試 API Gateway 和 EKS Handler 查詢功能
-  - 支援多種查詢類型
-  - 快速結果展示
-- **[simple_query.sh](./queries/simple_query.sh)** - 簡化查詢工具
-  - 服務狀態檢查
-  - DynamoDB 表統計
-  - API 查詢測試
+現在可以從專案根目錄統一執行所有測試：
 
-### ✅ [verification/](./verification/) - 驗證腳本
+```bash
+# 在專案根目錄執行
+./scripts/run_tests.sh --help
 
-- **[verify_system.sh](./verification/verify_system.sh)** - 系統驗證工具
-  - 環境檢查
-  - 服務狀態驗證
-  - 依賴項確認
+# 常用命令
+./scripts/run_tests.sh --all         # 執行所有測試
+./scripts/run_tests.sh --unit        # 只執行單元測試
+./scripts/run_tests.sh --integration # 只執行整合測試
+./scripts/run_tests.sh --coverage    # 生成覆蓋率報告
+./scripts/run_tests.sh --fast        # 快速測試（跳過慢速）
+```
 
-### 🛠️ [development/](./development/) - 開發輔助腳本
+### 覆蓋率測試腳本（已更新）
 
-- **[simulate_writes.py](./development/simulate_writes.py)** - 數據模擬工具
-  - 生成測試數據
-  - 模擬推播寫入
-  - 測試負載生成
+`testing/test_coverage.sh` 已更新為支援從根目錄運行：
 
-### 🔄 根目錄腳本
+```bash
+# 在專案根目錄執行
+./scripts/testing/test_coverage.sh
+```
 
-- **[restart_services.sh](./restart_services.sh)** - 服務重啟工具
+## 🚀 推薦工作流程
 
-  - 停止並移除現有容器
-  - 清理 volume 目錄
-  - 重新啟動服務
-  - 執行初始化腳本
+### 🎯 日常開發
 
-- **[fix_api_gateway.sh](./fix_api_gateway.sh)** - API Gateway 修復工具
-  - 刪除並重建 API Gateway
-  - 配置路由和整合
-  - 部署 API
-  - 測試 API 端點
+```bash
+# 1. 快速檢查（從根目錄）
+./scripts/run_tests.sh --fast --verbose
 
-## 🚀 使用指南
+# 2. 完整測試
+./scripts/run_tests.sh --all
 
-### 新手快速開始
+# 3. 覆蓋率檢查
+./scripts/run_tests.sh --coverage
+```
+
+### 🧪 深度測試
 
 ```bash
 # 1. 系統驗證
@@ -70,81 +69,128 @@
 # 2. 重啟服務
 ./scripts/restart_services.sh
 
-# 3. 修復 API Gateway (如果需要)
-./scripts/fix_api_gateway.sh
+# 3. 完整流程測試
+./scripts/testing/test_full_flow.sh
 
-# 4. 快速測試
+# 4. 覆蓋率測試
+./scripts/testing/test_coverage.sh
+```
+
+### 🔍 問題排查
+
+```bash
+# 1. 快速健康檢查
 ./scripts/testing/quick_test.sh
 
-# 5. 完整流程測試
-./scripts/testing/test_full_flow.sh
+# 2. API Gateway 修復
+./scripts/fix_api_gateway.sh
+
+# 3. 查詢工具
+./scripts/queries/simple_query.sh --all
 ```
 
-### 查詢操作
+## ⚡ 腳本執行方式
+
+### 從根目錄執行（推薦）
+
+所有腳本現在都支援從專案根目錄執行：
 
 ```bash
-# 基本查詢測試
-./scripts/queries/test_query.sh
+# 確保在專案根目錄
+pwd  # 應該顯示 .../aws-cqrs-test
 
-# 簡化查詢工具
-./scripts/queries/simple_query.sh
+# 執行任何腳本
+./scripts/[category]/[script-name].sh
 ```
 
-### Python 測試（在 query-service 目錄內）
+### 舊方式（仍然支援）
+
+你仍然可以進入子目錄執行特定腳本：
 
 ```bash
-# 單元測試
+cd query-service
 pytest tests/test_eks_handler.py -v
-
-# 整合測試
-pytest tests/test_integration.py -v -s
-
-# 所有測試加覆蓋率
-pytest tests/ --cov=. --cov-report=html
 ```
 
-## 📋 腳本需求
+## 📊 測試輸出說明
 
-### 系統需求
+### 成功示例
 
-- **Bash Shell** (Linux/macOS/WSL)
-- **Python 3.9+** (部分腳本)
-- **Docker** (LocalStack 相關功能)
-- **AWS CLI** (與 LocalStack 互動)
-- **jq** (JSON 處理)
+```txt
+🧪 測試執行腳本
+ℹ️  執行所有測試...
+===== 17 passed, 10 warnings in 2.23s =====
+✅ 測試執行完成！
+```
 
-### 權限需求
+### 覆蓋率報告
 
-- 大部分腳本需要執行權限 (`chmod +x script.sh`)
-- 網路存取權限（存取 LocalStack 和服務）
-- Docker 存取權限
+```txt
+Name                                Stmts   Miss   Cover   Missing
+------------------------------------------------------------------
+query-service/eks_handler/main.py      75     17  77.33%   73, 76-77
+------------------------------------------------------------------
+TOTAL                                  75     17  77.33%
 
-## 🔧 腳本維護
+✅ 覆蓋率 (77%) 符合要求 (>= 70%)
+```
 
-### 開發規範
+## 🔧 故障排除
 
-- 所有腳本統一使用 Bash Shell
-- 遵循一致的錯誤處理和顏色輸出
-- 提供詳細的執行日誌
-- 支援 Linux/macOS/WSL 環境
+### 權限問題
 
-### 測試優先級
+```bash
+# 給腳本添加執行權限
+chmod +x scripts/run_tests.sh
+chmod +x scripts/testing/*.sh
+```
 
-1. **必要測試**: `quick_test.sh`, `test_full_flow.sh`, `verify_system.sh`
-2. **查詢工具**: `test_query.sh`, `simple_query.sh`
-3. **Python 測試**: 單元測試和整合測試
+### 路徑問題
 
-## 🆘 故障排除
+```bash
+# 確認在正確目錄
+ls pytest.ini  # 應該存在
 
-### 常見問題
+# 檢查檔案結構
+ls -la query-service/
+ls -la query-service/tests/
+```
 
-1. **權限錯誤**: 確保腳本有執行權限 (`chmod +x script.sh`)
-2. **LocalStack 連接**: 確認 Docker 容器正在運行
-3. **API Gateway 問題**: 執行 `./scripts/fix_api_gateway.sh`
-4. **服務啟動失敗**: 檢查 Docker 日誌和容器狀態
+### 依賴問題
 
-### 獲得幫助
+```bash
+# 安裝測試依賴
+pip install -r query-service/requirements.txt
 
-- 查看 [../docs/](../docs/) 目錄中的詳細文檔
-- 檢查腳本輸出的錯誤訊息和建議
-- 使用 `./scripts/verification/verify_system.sh` 診斷環境問題
+# 檢查 Python 路徑
+python -c "import sys; print('\\n'.join(sys.path))"
+```
+
+## 📝 最佳實踐
+
+1. **始終從根目錄執行**腳本
+2. **使用新的統一腳本** `./scripts/run_tests.sh`
+3. **定期執行覆蓋率測試**確保代碼品質
+4. **遇到問題時使用快速檢查**腳本診斷
+
+## ✨ 更新摘要
+
+### 🆕 新增
+
+- ✅ 統一測試執行腳本 (`run_tests.sh`)
+- ✅ 根目錄 pytest 配置
+- ✅ 智能路徑檢測和調整
+
+### 🔄 更新
+
+- ✅ 覆蓋率測試腳本支援根目錄執行
+- ✅ 清理重複配置文件
+- ✅ 統一 .gitignore 規則
+
+### 🗑️ 清理
+
+- ✅ 移除重複的 pytest.ini
+- ✅ 移除重複的覆蓋率文件
+- ✅ 移除重複的 .gitignore
+
+現在你的測試工作流程更加統一和高效！

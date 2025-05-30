@@ -11,17 +11,25 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-# 將上層目錄加入 Python 路徑
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 根據執行目錄調整導入路徑
+current_dir = os.path.dirname(os.path.abspath(__file__))
+query_service_dir = os.path.dirname(current_dir)
+project_root = os.path.dirname(query_service_dir)
 
-# 從 eks-handler 目錄導入 main 模組
-sys.path.insert(
-    0,
-    os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eks-handler"),
-)
+# 如果從根目錄執行，添加 query-service 目錄到路徑
+if "query-service" in current_dir:
+    # 從 query-service 目錄執行
+    sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.insert(
+        0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "eks_handler")
+    )
+else:
+    # 從根目錄執行
+    sys.path.insert(0, os.path.join(project_root, "query-service"))
+    sys.path.insert(0, os.path.join(project_root, "query-service", "eks_handler"))
 
 # 必須在設置 sys.path 後導入
-from main import app  # noqa: E402
+from eks_handler.main import app  # noqa: E402
 
 # 建立測試客戶端
 client = TestClient(app)
@@ -58,7 +66,7 @@ class TestRootEndpoint:
 class TestUserQuery:
     """用戶查詢端點測試"""
 
-    @patch("main.lambda_client")
+    @patch("eks_handler.main.lambda_client")
     def test_query_user_success(self, mock_lambda_client):
         """測試成功查詢用戶推播記錄"""
         # 模擬 Lambda 響應
@@ -100,7 +108,7 @@ class TestUserQuery:
         assert payload["query_type"] == "user"
         assert payload["user_id"] == "user-001"
 
-    @patch("main.lambda_client")
+    @patch("eks_handler.main.lambda_client")
     def test_query_user_lambda_error(self, mock_lambda_client):
         """測試 Lambda 調用失敗的情況"""
         # 模擬 Lambda 錯誤
@@ -117,7 +125,7 @@ class TestUserQuery:
 class TestMarketingQuery:
     """行銷活動查詢端點測試"""
 
-    @patch("main.lambda_client")
+    @patch("eks_handler.main.lambda_client")
     def test_query_marketing_success(self, mock_lambda_client):
         """測試成功查詢行銷活動推播記錄"""
         # 模擬 Lambda 響應
@@ -154,7 +162,7 @@ class TestMarketingQuery:
 class TestFailuresQuery:
     """失敗查詢端點測試"""
 
-    @patch("main.lambda_client")
+    @patch("eks_handler.main.lambda_client")
     def test_query_failures_success(self, mock_lambda_client):
         """測試成功查詢失敗的推播記錄"""
         # 模擬 Lambda 響應

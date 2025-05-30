@@ -48,7 +48,7 @@
 │   ├── ✅ verification/              # 驗證腳本
 │   └── 🛠️ development/               # 開發工具
 └── 🚀 query-service/                 # 主要服務
-    ├── eks-handler/                  # FastAPI 服務
+    ├── eks_handler/                  # FastAPI 服務
     ├── lambdas/                      # AWS Lambda
     ├── tests/                        # 測試套件
     └── infra/                        # 基礎設施

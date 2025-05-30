@@ -35,6 +35,7 @@ flags:
     carryforward: true
   integration:
     paths:
+      - query-service/eks_handler/
       - query-service/tests/
     carryforward: true
 
@@ -49,3 +50,5 @@ ignore:
   - "scripts/"
   - "docs/"
   - "**/*.md"
+  - ".pytest_cache/"
+  - ".mypy_cache/"

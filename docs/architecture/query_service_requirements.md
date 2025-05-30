@@ -30,7 +30,7 @@ query-service/
 ├── lambdas/
 │   ├── query_lambda/app.py           # Lambda: 接 API Gateway 請求
 │   └── query_result_lambda/app.py    # Lambda: 查詢 DynamoDB 回傳結果
-├── eks-handler/main.py               # 模擬 EKS handler（用 FastAPI）
+├── eks_handler/main.py               # 模擬 EKS handler（用 FastAPI）
 ├── requirements.txt
 ```
 

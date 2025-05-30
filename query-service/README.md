@@ -37,7 +37,7 @@ aws-hexagon-notify-test/
     │   ├── query_lambda/             # 接收 API Gateway 請求的 Lambda
     │   ├── query_result_lambda/      # 查詢 DynamoDB 的 Lambda
     │   └── stream_processor_lambda/  # 處理 DynamoDB Stream 的 Lambda
-    ├── eks-handler/                  # 模擬 EKS 的 FastAPI 應用
+    ├── eks_handler/                  # 模擬 EKS 的 FastAPI 應用
     │   ├── main.py
     │   ├── Dockerfile
     │   └── requirements.txt

@@ -62,7 +62,7 @@ query-service/
 │   ├── stream_processor_lambda/       # ✨ 新增：Stream 處理器
 │   ├── query_lambda/                  # API Gateway 適配器
 │   └── query_result_lambda/           # DynamoDB 查詢適配器
-├── eks-handler/                       # FastAPI 業務邏輯層
+├── eks_handler/                       # FastAPI 業務邏輯層
 └── scripts/simulate_writes.py         # 寫入測試腳本
 ```
 
