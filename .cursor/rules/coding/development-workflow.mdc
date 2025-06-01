@@ -1,0 +1,63 @@
+---
+description: when starting for developing
+globs:
+alwaysApply: false
+---
+# 開發工作流程
+
+## 快速開始流程
+
+### 1. 環境驗證
+```bash
+# 檢查系統環境和依賴
+./scripts/verification/verify_system.sh
+```
+
+### 2. 服務啟動
+```bash
+# 重啟並初始化服務
+./scripts/restart_services.sh
+```
+
+### 3. API Gateway 修復
+```bash
+# 修復 API Gateway 配置 (如果需要)
+./scripts/fix_api_gateway.sh
+```
+
+## 測試流程
+
+### 快速測試
+- [scripts/testing/quick_test.sh](mdc:scripts/testing/quick_test.sh): 快速功能驗證
+- [scripts/testing/test_full_flow.sh](mdc:scripts/testing/test_full_flow.sh): 完整 CQRS 流程測試
+
+### 查詢測試
+- [scripts/queries/test_query.sh](mdc:scripts/queries/test_query.sh): 查詢測試工具
+- [scripts/queries/simple_query.sh](mdc:scripts/queries/simple_query.sh): 簡化查詢工具
+
+### Python 測試
+```bash
+cd query-service
+pytest tests/test_eks_handler.py -v      # 單元測試
+pytest tests/test_integration.py -v      # 整合測試
+```
+
+## 重要配置文件
+
+- [docker-compose.yml](mdc:query-service/docker-compose.yml): Docker 服務配置
+- [requirements.txt](mdc:query-service/requirements.txt): Python 依賴
+- [pytest.ini](mdc:pytest.ini): 測試配置
+
+## 日常開發建議
+
+1. **修改代碼前**: 先執行 `quick_test.sh` 確保環境正常
+2. **測試新功能**: 使用 `simple_query.sh --all` 進行查詢驗證
+3. **提交前**: 執行完整測試流程確保沒有回歸問題
+
+## 故障排除
+
+如果遇到問題，依序檢查：
+1. LocalStack 服務狀態
+2. DynamoDB 表是否正確創建
+3. API Gateway 配置是否正確
+4. Lambda 函數部署狀態

@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# 載入環境變量設置
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+source "$PROJECT_ROOT/scripts/setup_env.sh"
+
 # ANSI 顏色定義
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -8,14 +13,9 @@ RED='\033[0;31m'
 GRAY='\033[0;37m'
 NC='\033[0m' # No Color
 
-# 端點設定
-AWS_ENDPOINT="http://localhost:4566"
-AWS_REGION="us-east-1"
-
-# 設置臨時憑證
-export AWS_ACCESS_KEY_ID=test
-export AWS_SECRET_ACCESS_KEY=test
-export AWS_DEFAULT_REGION=$AWS_REGION
+# 端點設定 (使用環境變量)
+AWS_ENDPOINT="$LOCALSTACK_ENDPOINT"
+AWS_REGION="$AWS_DEFAULT_REGION"
 
 echo -e "\n${CYAN}LocalStack API Gateway 修復工具${NC}"
 echo -e "${GRAY}=============================${NC}\n"
@@ -119,7 +119,7 @@ for RESOURCE_ID in $USER_ID $MARKETING_ID $FAILURES_ID; do
         --http-method GET \
         --type AWS_PROXY \
         --integration-http-method POST \
-        --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:query_lambda/invocations"
+        --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:query_result_lambda/invocations"
 
     # 設置方法響應
     aws $AWS_COMMON_ARGS apigateway put-method-response \

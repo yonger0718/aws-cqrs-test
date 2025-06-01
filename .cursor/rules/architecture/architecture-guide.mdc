@@ -1,0 +1,52 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# 架構指南
+
+## CQRS 架構模式
+
+本專案實現了 CQRS (Command Query Responsibility Segregation) 模式：
+
+### Command Side (寫入端)
+- **資料表**: `command-records`
+- **功能**: 處理寫入操作和命令
+- **觸發**: DynamoDB Stream 事件
+
+### Query Side (查詢端)
+- **資料表**: `notification-records`
+- **功能**: 最佳化的查詢操作
+- **索引**: GSI (Global Secondary Index) 支援
+
+### 事件驅動同步
+- **Stream Processor**: DynamoDB Stream 觸發的 Lambda 函數
+- **資料同步**: 自動將 Command Side 的資料轉換並同步到 Query Side
+
+## 六邊形架構實現
+
+```txt
+┌─────────────────┐    ┌──────────────┐    ┌─────────────────┐
+│   Command Side  │───▶│  DynamoDB    │───▶│   Query Side    │
+│   (Write Path)  │    │   Stream     │    │   (Read Path)   │
+└─────────────────┘    └──────────────┘    └─────────────────┘
+         │                      │                      │
+         ▼                      ▼                      ▼
+  ┌─────────────┐      ┌─────────────┐      ┌─────────────┐
+  │ command-    │      │   Stream    │      │notification-│
+  │ records     │      │ Processor   │      │ records     │
+  │ (Write DB)  │      │  Lambda     │      │ (Read DB)   │
+  └─────────────┘      └─────────────┘      └─────────────┘
+```
+
+## 主要組件
+
+- **FastAPI 服務**: [query-service/eks_handler/](mdc:query-service/eks_handler)
+- **Lambda 函數**: [query-service/lambdas/](mdc:query-service/lambdas)
+- **基礎設施**: [query-service/infra/](mdc:query-service/infra)
+
+## 查詢類型
+
+1. **用戶查詢**: 根據 `user_id` 查詢個人推播記錄
+2. **活動查詢**: 根據 `marketing_id` 查詢活動推播統計
+3. **失敗查詢**: 根據 `transaction_id` 查詢失敗記錄

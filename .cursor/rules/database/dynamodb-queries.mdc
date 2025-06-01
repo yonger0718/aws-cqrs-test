@@ -1,0 +1,65 @@
+---
+description: when needs to query
+globs:
+alwaysApply: false
+---
+# DynamoDB 查詢模式指南
+
+## 📋 CQRS 查詢模式
+
+### 1. 用戶查詢 (`notification-records` 主表)
+```python
+# 查詢特定用戶的所有推播記錄
+table.query(
+    KeyConditionExpression=Key('user_id').eq('test_user_001'),
+    ScanIndexForward=False,  # 最新記錄優先
+    Limit=20  # 分頁查詢
+)
+```
+
+### 2. 行銷活動查詢 (`marketing_id-index` GSI)
+```python
+# 查詢特定活動的推播統計
+table.query(
+    IndexName='marketing_id-index',
+    KeyConditionExpression=Key('marketing_id').eq('campaign_2024_new_year'),
+    FilterExpression=Attr('status').eq('DELIVERED')  # 過濾成功記錄
+)
+```
+
+### 3. 失敗記錄查詢 (`transaction_id-status-index` GSI)
+```python
+# 查詢特定交易的失敗記錄
+table.query(
+    IndexName='transaction_id-status-index',
+    KeyConditionExpression=Key('transaction_id').eq('tx_001') & Key('status').eq('FAILED')
+)
+```
+
+## 🧪 測試資料範例
+
+### Command Table (`command-records`) 測試資料
+- **`tx_001`**: 成功推播 (test_user_001, IOS, DELIVERED)
+- **`tx_002`**: 失敗推播 (test_user_002, ANDROID, FAILED)
+- **`tx_003`**: Web推播 (test_user_001, WEBPUSH, SENT)
+- **`tx_004`**: 網路逾時 (test_user_003, IOS, FAILED)
+
+### Query Table (`notification-records`) 同步資料
+- Stream 處理後的最佳化查詢資料
+- 移除 `device_token` 和 `payload` 欄位
+- 保留查詢必要資訊
+
+## 📊 資料一致性監控
+
+### 同步率檢查
+```bash
+# Command Table 記錄數
+aws dynamodb scan --table-name command-records --select COUNT
+
+# Query Table 記錄數
+aws dynamodb scan --table-name notification-records --select COUNT
+```
+
+### 建議同步率
+- **目標**: > 85% (考慮異步處理延遲)
+- **監控**: 定期檢查兩表記錄數差異

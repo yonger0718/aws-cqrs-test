@@ -23,7 +23,7 @@ else:
 TABLE_NAME = "notification-records"
 
 
-def decimal_to_int(obj):
+def decimal_to_int(obj: Any) -> int:
     """Convert Decimal objects to int for JSON serialization"""
     if isinstance(obj, Decimal):
         return int(obj)
@@ -33,10 +33,37 @@ def decimal_to_int(obj):
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Lambda function to query DynamoDB based on different criteria
+    Supports both direct Lambda invocation and API Gateway events
     """
     try:
-        # 解析請求
-        body = json.loads(event.get("body", "{}")) if isinstance(event.get("body"), str) else event
+        # 解析請求 - 支持 API Gateway 和直接調用
+        if "queryStringParameters" in event:
+            # API Gateway 事件格式
+            query_params = event.get("queryStringParameters") or {}
+            path = event.get("path", "")
+
+            # 根據路徑和參數構建查詢
+            if "/query/user" in path:
+                body = {"query_type": "user", "user_id": query_params.get("user_id")}
+            elif "/query/marketing" in path:
+                body = {"query_type": "marketing", "marketing_id": query_params.get("marketing_id")}
+            elif "/query/failures" in path:
+                body = {
+                    "query_type": "failures",
+                    "transaction_id": query_params.get("transaction_id"),
+                }
+            else:
+                return {
+                    "statusCode": 400,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps({"error": "Invalid path"}),
+                }
+        else:
+            # 直接 Lambda 調用格式
+            body = (
+                json.loads(event.get("body", "{}")) if isinstance(event.get("body"), str) else event
+            )
+
         query_type = body.get("query_type")
 
         table = dynamodb.Table(TABLE_NAME)

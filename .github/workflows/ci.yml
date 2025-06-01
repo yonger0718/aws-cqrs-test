@@ -25,22 +25,33 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Install linting tools
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 black isort mypy types-requests types-boto3
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install dependencies
+      run: poetry install --no-root
 
     - name: Run Black formatter check
-      run: black --check --line-length=100 query-service/
+      run: poetry run black --check --line-length=88 query-service/
 
     - name: Run isort import checker
-      run: isort --check-only --profile=black --line-length=100 query-service/
+      run: poetry run isort --check-only --profile=black --line-length=88 query-service/
 
     - name: Run Flake8 linter
-      run: flake8 query-service/ --max-line-length=100 --extend-ignore=E203,W503 --exclude=__pycache__,venv
+      run: poetry run flake8 query-service/ --max-line-length=88 --extend-ignore=E203,W503 --exclude=__pycache__,venv
 
     - name: Run MyPy type checker
-      run: mypy query-service/ --ignore-missing-imports
+      run: poetry run mypy query-service/ --ignore-missing-imports
 
   # 單元測試
   unit-tests:
@@ -58,23 +69,25 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
-    - name: Cache pip dependencies
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Cache Poetry dependencies
       uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
 
     - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -r query-service/requirements.txt
-        pip install -r query-service/tests/requirements-test.txt
+      run: poetry install --no-root
 
     - name: Run unit tests with coverage
       run: |
-        pytest query-service/tests/test_eks_handler.py \
+        poetry run pytest query-service/tests/test_eks_handler.py \
           --cov=query-service/eks_handler \
           --cov-report=xml \
           --cov-report=term \
@@ -121,11 +134,22 @@ jobs:
       with:
         python-version: ${{ env.PYTHON_VERSION }}
 
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v3
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
-        pip install -r query-service/requirements.txt
-        pip install -r query-service/tests/requirements-test.txt
+        poetry install --no-root
         pip install awscli-local
 
     - name: Wait for LocalStack
@@ -157,7 +181,7 @@ jobs:
       env:
         LOCALSTACK_URL: http://localhost:4566
       run: |
-        pytest query-service/tests/test_integration.py \
+        poetry run pytest query-service/tests/test_integration.py \
           --cov=query-service/eks_handler \
           --cov-append \
           --cov-report=xml
@@ -216,6 +240,21 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Install dependencies
+      run: poetry install --no-root
+
     - name: Run Trivy vulnerability scanner
       uses: aquasecurity/trivy-action@master
       with:
@@ -232,8 +271,8 @@ jobs:
 
     - name: Run safety check
       run: |
-        pip install safety
-        safety scan -r query-service/requirements.txt --json || true
+        poetry run pip install safety
+        poetry run safety scan --json || true
 
   # 部署 (僅在主分支) - 暫時停用
   # deploy:

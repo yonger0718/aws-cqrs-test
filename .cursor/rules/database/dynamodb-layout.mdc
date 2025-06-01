@@ -1,0 +1,81 @@
+---
+description: when needs to query
+globs:
+alwaysApply: false
+---
+# DynamoDB 資料庫布局指南
+
+## 📊 CQRS 表結構概述
+
+本專案實現完整的 CQRS 模式，使用兩個獨立的 DynamoDB 表分離讀寫操作：
+
+1. **`command-records`** - Command Side (寫入端)
+2. **`notification-records`** - Query Side (查詢端)
+
+## 📝 Command Side - `command-records` 表
+
+### 主鍵設計
+- **Partition Key**: `transaction_id` (String) - 交易唯一識別碼
+- **Sort Key**: `created_at` (Number) - 創建時間戳 (毫秒)
+
+### 表屬性
+- **Stream**: 啟用 DynamoDB Stream (`NEW_AND_OLD_IMAGES`)
+- **讀取容量**: 5 RCU / **寫入容量**: 5 WCU
+
+### 完整欄位結構
+```json
+{
+  "transaction_id": "String",      // 交易ID (主鍵)
+  "created_at": "Number",          // 時間戳 (排序鍵)
+  "user_id": "String",            // 用戶ID
+  "marketing_id": "String",       // 行銷活動ID (可選)
+  "notification_title": "String", // 通知標題
+  "status": "String",             // SENT | DELIVERED | FAILED
+  "platform": "String",          // IOS | ANDROID | WEBPUSH
+  "device_token": "String",       // 設備推播令牌
+  "payload": "String",            // JSON 格式的推播內容
+  "error_msg": "String"           // 錯誤訊息 (失敗時)
+}
+```
+
+**用途**: 專門處理寫入操作，觸發 Stream 事件進行異步同步
+
+## 🔍 Query Side - `notification-records` 表
+
+### 主鍵設計
+- **Partition Key**: `user_id` (String) - 用戶ID
+- **Sort Key**: `created_at` (Number) - 創建時間戳 (毫秒)
+
+### 全域二級索引 (GSI)
+
+#### 1. `marketing_id-index`
+- **Partition Key**: `marketing_id` (String)
+- **Sort Key**: `created_at` (Number)
+- **用途**: 按行銷活動查詢推播記錄
+
+#### 2. `transaction_id-status-index`
+- **Partition Key**: `transaction_id` (String)
+- **Sort Key**: `status` (String)
+- **用途**: 按交易ID和狀態查詢失敗記錄
+
+### 完整欄位結構
+```json
+{
+  "user_id": "String",            // 用戶ID (主鍵)
+  "created_at": "Number",         // 時間戳 (排序鍵)
+  "transaction_id": "String",     // 交易ID (用於索引)
+  "marketing_id": "String",       // 行銷活動ID (用於索引)
+  "notification_title": "String", // 通知標題
+  "status": "String",             // SENT | DELIVERED | FAILED
+  "platform": "String",          // IOS | ANDROID | WEBPUSH
+  "error_msg": "String"           // 錯誤訊息 (失敗時，可選)
+}
+```
+
+**用途**: 專門處理查詢操作，提供最佳化的讀取效能
+
+## 🔄 資料同步機制
+
+**流程**: `command-records` → DynamoDB Stream → [stream_processor_lambda](mdc:query-service/lambdas/stream_processor_lambda/app.py) → `notification-records`
+
+**定義文件**: [setup.sh](mdc:query-service/infra/localstack/setup.sh)

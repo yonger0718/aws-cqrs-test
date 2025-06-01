@@ -1,0 +1,53 @@
+---
+description: when agent needs to run testing for eks_handler
+globs:
+alwaysApply: false
+---
+# 測試指南
+
+## 測試結構
+
+### 測試目錄
+- [query-service/tests/](mdc:query-service/tests): 主要測試套件
+- [query-service/tests/test_eks_handler.py](mdc:query-service/tests/test_eks_handler.py): EKS Handler 單元測試
+- [query-service/tests/test_integration.py](mdc:query-service/tests/test_integration.py): 整合測試
+
+### 測試配置
+- [pytest.ini](mdc:pytest.ini): pytest 配置文件
+- [codecov.yml](mdc:codecov.yml): 代碼覆蓋率配置
+
+## 測試類型
+
+### 1. 單元測試
+- **覆蓋率**: 76% (9/9 通過)
+- **執行時間**: 1.45s
+- **框架**: pytest + unittest.mock
+
+### 2. 整合測試
+- **通過率**: 100% (8/8 通過)
+- **執行時間**: 11.2s
+- **測試範圍**: API 端點、資料庫操作
+
+### 3. 效能測試
+- **響應時間**: < 10ms
+- **並發測試**: 支援 10+ 並發請求
+
+## 測試執行命令
+
+```bash
+# 所有測試
+pytest tests/ -v
+
+# 特定測試文件
+pytest tests/test_eks_handler.py -v
+pytest tests/test_integration.py -v
+
+# 覆蓋率報告
+pytest tests/ --cov=eks_handler --cov-report=html
+```
+
+## 測試環境要求
+
+- Python 3.12
+- LocalStack 環境運行
+- DynamoDB 表正確創建

@@ -1,0 +1,51 @@
+---
+description: Applies general Python coding best practices across all Python files in the project, focusing on code clarity, style, and maintainability.
+globs: **/*.py
+alwaysApply: false
+---
+- Follow PEP 8 style guide for formatting.
+- Use docstrings to document functions and classes.
+- Write simple and clear code; avoid unnecessary complexity.
+- Prefer list comprehensions for creating lists when appropriate.
+- Use try-except blocks to handle exceptions gracefully.
+- Utilize type hints for better code clarity and type checking.
+- Limit the use of global variables to reduce side effects.
+- Choose descriptive variable, function, and class names.
+- Set verbosity level to 2 (range: 0-3).
+- Use modular design.
+- Follow Single Responsibility Principle.
+- Follow DRY (Don't Repeat Yourself) Principle.
+- Use Black for code formatting.
+- Use Pylint for linting.
+- Require code reviews.
+- Use GitHub Pull Requests for code reviews.
+- Review for functionality, code quality, and security.
+- Use .env files for configuration.
+- Use python-dotenv for environment variable management.
+- Manage secrets using environment variables.
+- Require documentation for all code.
+- Use docstrings for documentation.
+- Follow the Google Python Style Guide for documentation.
+- Prefer using try-except blocks for error handling.
+- Log errors appropriately.
+- Use strict mode.
+- Indent using 4 spaces.
+- Limit line length to 120 characters.
+- Use # for single-line comments and ''' for multi-line comments.
+- Require comments in the code.
+- Use the Python logging module for logging.
+- Use log levels: debug, info, warn, error.
+- Set a log retention policy of 7 days.
+- Monitor file processing time.
+- Monitor classification accuracy.
+- Monitor error rate.
+- Use snake_case for variables.
+- Use snake_case for functions.
+- Use PascalCase for classes.
+- Use PascalCase for interfaces.
+- Use snake_case for files.
+- Require HTTPS for secure connections.
+- Sanitize all inputs.
+- Validate all inputs.
+- Use environment variables for sensitive configuration.
+- Always use classes instead of function

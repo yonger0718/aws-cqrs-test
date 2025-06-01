@@ -201,6 +201,23 @@ query-service/volume/
 *.zip
 lambda-deployment-*.zip
 
-# Coverage reports (all locations)
+# Poetry
+poetry.lock
+dist/
+.venv/
+
+# Coverage reports (regenerated)
 htmlcov/
+.coverage
 coverage.json
+
+# IDE and editor files
+.vscode/settings.json
+.cursor/logs/
+*.swp
+*.swo
+
+# Local development
+.env.local
+.env.development
+local_config.json

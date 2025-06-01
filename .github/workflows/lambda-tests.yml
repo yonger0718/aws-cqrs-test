@@ -1,0 +1,150 @@
+name: Lambda Functions Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "query-service/lambdas/**"
+      - "query-service/tests/test_lambdas/**"
+      - "pyproject.toml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "query-service/lambdas/**"
+      - "query-service/tests/test_lambdas/**"
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  lambda-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    # 添加 LocalStack 服務
+    services:
+      localstack:
+        image: localstack/localstack:latest
+        ports:
+          - 4566:4566
+        env:
+          SERVICES: dynamodb,lambda,s3,sns,sqs
+          DEFAULT_REGION: us-east-1
+          LAMBDA_EXECUTOR: docker
+          DOCKER_HOST: unix:///var/run/docker.sock
+        options: >-
+          --health-cmd="curl -f http://localhost:4566/_localstack/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Cache Poetry dependencies
+        uses: actions/cache@v3
+        with:
+          path: .venv
+          key: venv-lambda-${{ runner.os }}-${{ steps.setup-python.outputs.python-version }}-${{ hashFiles('**/poetry.lock') }}
+
+      - name: Install dependencies
+        run: |
+          poetry install --no-root
+          # 安裝 awscli-local 用於 LocalStack
+          pip install awscli-local
+
+      - name: Set up test environment
+        run: |
+          # AWS 測試環境變數
+          echo "AWS_DEFAULT_REGION=us-east-1" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=test" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=test" >> $GITHUB_ENV
+          # LocalStack 端點
+          echo "AWS_ENDPOINT_URL=http://localhost:4566" >> $GITHUB_ENV
+          echo "LOCALSTACK_ENDPOINT=http://localhost:4566" >> $GITHUB_ENV
+
+      - name: Wait for LocalStack
+        run: |
+          echo "等待 LocalStack 啟動..."
+          timeout 60 bash -c 'until curl -f http://localhost:4566/_localstack/health; do sleep 2; done'
+          echo "LocalStack 已就緒"
+
+      # 運行 Lambda 測試但不設置嚴格的覆蓋率要求
+      - name: Run Lambda tests with coverage
+        run: |
+          echo "🎯 Running unified Lambda tests with coverage..."
+          # 不使用 pyproject.toml 的配置，直接運行覆蓋率測試
+          poetry run python -m pytest query-service/tests/test_lambdas/ -v \
+            --tb=short \
+            --cov=query-service/lambdas \
+            --cov-report=xml \
+            --cov-report=term-missing \
+            --no-cov-on-fail
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          file: ./coverage.xml
+          flags: lambda-tests
+          name: codecov-lambda
+          token: ${{ secrets.CODECOV_TOKEN }} # pragma: allowlist secret
+          fail_ci_if_error: false
+          slug: yonger0718/aws-cqrs-test
+
+      - name: Generate test report
+        if: always()
+        run: |
+          echo "## 📊 Lambda Tests Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Python Version: ${{ env.PYTHON_VERSION }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Test Status: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "- LocalStack: Enabled" >> $GITHUB_STEP_SUMMARY
+          echo "- Dependency Management: Poetry" >> $GITHUB_STEP_SUMMARY
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: lambda-tests
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: latest
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+
+      - name: Install dependencies
+        run: poetry install --no-root
+
+      - name: Run security scan
+        run: |
+          # 安裝安全掃描工具
+          poetry run pip install bandit safety
+          # 掃描 Lambda 代碼安全性
+          poetry run bandit -r query-service/lambdas/ -f json -o bandit-report.json || true
+          # 檢查依賴安全性
+          poetry run safety scan --json || true

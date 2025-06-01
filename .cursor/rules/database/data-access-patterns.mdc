@@ -1,0 +1,64 @@
+---
+description: when needs to query
+globs:
+alwaysApply: false
+---
+# 數據存取模式指南
+
+## 🔄 CQRS 存取模式
+
+### 寫入模式 (Command Side)
+- **表名**: `command-records`
+- **主要操作**: PUT_ITEM (新增推播記錄)
+- **觸發**: 推播服務寫入命令
+- **後續**: 自動觸發 DynamoDB Stream
+
+### 讀取模式 (Query Side)
+- **表名**: `notification-records`
+- **主要操作**: QUERY (用戶查詢、活動統計)
+- **索引使用**: 主表 + 2個GSI
+- **資料來源**: Stream 同步的最佳化資料
+
+## 📊 查詢存取模式
+
+### 模式1: 用戶推播歷史查詢
+```python
+# 存取路徑: notification-records 主表
+response = table.query(
+    KeyConditionExpression=Key('user_id').eq(user_id),
+    ScanIndexForward=False,  # 最新記錄優先
+    Limit=20  # 分頁查詢
+)
+```
+
+### 模式2: 行銷活動效果分析
+```python
+# 存取路徑: marketing_id-index GSI
+response = table.query(
+    IndexName='marketing_id-index',
+    KeyConditionExpression=Key('marketing_id').eq(campaign_id),
+    FilterExpression=Attr('status').eq('DELIVERED')
+)
+```
+
+### 模式3: 失敗記錄排查
+```python
+# 存取路徑: transaction_id-status-index GSI
+response = table.query(
+    IndexName='transaction_id-status-index',
+    KeyConditionExpression=Key('transaction_id').eq(tx_id) & Key('status').eq('FAILED')
+)
+```
+
+## 🛠️ 實作參考文件
+
+- **Stream 處理**: [stream_processor_lambda/app.py](mdc:query-service/lambdas/stream_processor_lambda/app.py)
+- **查詢實作**: [query_result_lambda/app.py](mdc:query-service/lambdas/query_result_lambda/app.py)
+- **表結構定義**: [setup.sh](mdc:query-service/infra/localstack/setup.sh)
+- **測試驗證**: [test_integration.py](mdc:query-service/tests/test_integration.py)
+
+## ⚡ 效能優化建議
+
+- 使用 BatchGetItem 進行批量查詢
+- 善用 FilterExpression 減少傳輸資料
+- 定期監控 GSI 熱點分區

@@ -1,0 +1,50 @@
+# AWS & LocalStack 指南
+
+## LocalStack 環境
+
+### 服務配置
+本專案使用 LocalStack 模擬 AWS 環境，主要服務包括：
+- **DynamoDB**: 資料存儲
+- **Lambda**: 無伺服器函數
+- **API Gateway**: API 路由管理
+
+### 容器管理
+- 使用 [query-service/docker-compose.yml](mdc:query-service/docker-compose.yml) 管理 LocalStack
+- 預設端點: `http://localhost:4566`
+
+## DynamoDB 表結構
+
+### Command Side
+- **表名**: `command-records`
+- **用途**: 處理寫入操作
+- **特性**: 啟用 DynamoDB Stream
+
+### Query Side
+- **表名**: `notification-records`
+- **用途**: 最佳化查詢操作
+- **索引**: 配置 GSI (Global Secondary Index)
+
+## Lambda 函數
+
+### Stream Processor
+- **觸發**: DynamoDB Stream 事件
+- **功能**: 資料同步 Command → Query
+- **代碼位置**: [query-service/lambdas/](mdc:query-service/lambdas/)## API Gateway 配置
+
+### 端點管理
+- FastAPI 服務透過 API Gateway 暴露
+- 如有問題，執行 [scripts/fix_api_gateway.sh](mdc:scripts/fix_api_gateway.sh)
+
+### 路由配置
+- 查詢端點: 處理各種查詢請求
+- 錯誤處理: 統一錯誤回應格式
+
+## 常用 AWS CLI 命令
+
+```bash
+# 查看 DynamoDB 表
+aws dynamodb list-tables --endpoint-url=http://localhost:4566
+
+# 查看 Lambda 函數
+aws lambda list-functions --endpoint-url=http://localhost:4566
+```

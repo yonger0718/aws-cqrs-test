@@ -1,0 +1,7 @@
+# 測試依賴項
+pytest>=7.0.0
+pytest-cov>=4.0.0
+requests>=2.28.0
+
+# 運行時依賴項
+requests>=2.28.0

@@ -1,0 +1,52 @@
+---
+description: when searching for files
+globs:
+alwaysApply: false
+---
+# 文件導航指南
+
+## 核心文件結構
+
+### 主要服務代碼
+- [query-service/eks_handler/](mdc:query-service/eks_handler): FastAPI 主要服務
+- [query-service/lambdas/](mdc:query-service/lambdas): AWS Lambda 函數
+- [query-service/infra/](mdc:query-service/infra): 基礎設施代碼
+
+### 腳本工具
+- [scripts/testing/](mdc:scripts/testing): 測試腳本集合
+- [scripts/queries/](mdc:scripts/queries): 查詢工具腳本
+- [scripts/verification/](mdc:scripts/verification): 環境驗證腳本
+- [scripts/development/](mdc:scripts/development): 開發輔助腳本
+
+### 文檔資源
+- [docs/testing/](mdc:docs/testing): 測試相關文檔
+- [docs/guides/](mdc:docs/guides): 使用指南
+- [docs/architecture/](mdc:docs/architecture): 架構文檔
+- [docs/project/](mdc:docs/project): 專案總結
+
+## 重要配置文件
+
+### Docker & 部署
+- [query-service/docker-compose.yml](mdc:query-service/docker-compose.yml): Docker 服務編排
+- [query-service/requirements.txt](mdc:query-service/requirements.txt): Python 依賴管理
+
+### 測試配置
+- [pytest.ini](mdc:pytest.ini): pytest 測試配置
+- [codecov.yml](mdc:codecov.yml): 代碼覆蓋率配置
+
+### 開發工具
+- [.pre-commit-config.yaml](mdc:.pre-commit-config.yaml): Git pre-commit 鉤子
+- [.markdownlint.json](mdc:.markdownlint.json): Markdown 格式檢查
+- [.gitignore](mdc:.gitignore): Git 忽略規則
+
+## 快速訪問
+
+### 立即開始開發
+1. 閱讀 [README.md](mdc:README.md) 了解專案概述
+2. 查看 [query-service/README.md](mdc:query-service/README.md) 了解服務細節
+3. 執行 [scripts/restart_services.sh](mdc:scripts/restart_services.sh) 啟動環境
+
+### 常用操作文件
+- [scripts/restart_services.sh](mdc:scripts/restart_services.sh): 重啟所有服務
+- [scripts/fix_api_gateway.sh](mdc:scripts/fix_api_gateway.sh): 修復 API Gateway
+- [scripts/testing/quick_test.sh](mdc:scripts/testing/quick_test.sh): 快速測試驗證

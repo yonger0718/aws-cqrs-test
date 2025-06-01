@@ -4,7 +4,7 @@ import json
 import random
 import time
 from datetime import datetime
-from typing import Optional
+from typing import Any, Dict, Optional
 
 import boto3
 
@@ -22,7 +22,7 @@ COMMAND_TABLE_NAME = "command-records"
 
 def generate_notification_record(
     transaction_id: str, user_id: str, marketing_id: Optional[str] = None
-):
+) -> Dict[str, Any]:
     """產生模擬的通知記錄"""
     current_time = int(datetime.now().timestamp() * 1000)
 
@@ -64,7 +64,7 @@ def generate_notification_record(
     return record
 
 
-def write_to_command_table(record):
+def write_to_command_table(record: Dict[str, Any]) -> bool:
     """寫入到命令表"""
     table = dynamodb.Table(COMMAND_TABLE_NAME)
 
@@ -77,7 +77,7 @@ def write_to_command_table(record):
         return False
 
 
-def simulate_batch_notifications():
+def simulate_batch_notifications() -> None:
     """模擬批次推播"""
     print("🚀 開始模擬批次推播...")
 
@@ -98,7 +98,7 @@ def simulate_batch_notifications():
     print("✅ 批次推播模擬完成")
 
 
-def simulate_individual_notification():
+def simulate_individual_notification() -> None:
     """模擬單個推播"""
     print("📱 模擬單個推播...")
 
@@ -113,7 +113,7 @@ def simulate_individual_notification():
     print("✅ 單個推播模擬完成")
 
 
-def simulate_update_status():
+def simulate_update_status() -> None:
     """模擬狀態更新（從 SENT 到 DELIVERED 或 FAILED）"""
     print("🔄 模擬狀態更新...")
 
@@ -144,7 +144,7 @@ def simulate_update_status():
     print("✅ 狀態更新模擬完成")
 
 
-def main():
+def main() -> None:
     print("🎯 DynamoDB Stream 測試腳本")
     print("=" * 50)
 

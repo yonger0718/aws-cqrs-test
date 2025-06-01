@@ -1,0 +1,61 @@
+---
+description:
+globs: **/*.py
+alwaysApply: false
+---
+# 編程標準與約定
+
+## Python 編程規範
+
+### 代碼風格
+- **Python 版本**: 3.12
+- **框架**: FastAPI (主要 Web 框架)
+- **異步**: 使用 async/await 模式
+- **依賴管理**: [requirements.txt](mdc:query-service/requirements.txt)
+
+### 測試約定
+- **測試框架**: pytest
+- **模擬**: unittest.mock
+- **覆蓋率**: 目標 > 75%
+- **測試命名**: `test_*.py` 格式
+
+### 文件組織
+- **服務代碼**: 放在 `query-service/eks_handler/` 目錄
+- **Lambda 函數**: 放在 `query-service/lambdas/` 目錄
+- **測試代碼**: 放在 `query-service/tests/` 目錄
+- **基礎設施**: 放在 `query-service/infra/` 目錄
+
+## CQRS 模式約定
+
+### Command 端規範
+- 處理寫入操作
+- 觸發 DynamoDB Stream 事件
+- 資料存儲於 `command-records` 表
+
+### Query 端規範
+- 處理查詢操作
+- 使用 GSI 索引優化查詢
+- 資料存儲於 `notification-records` 表
+
+### 事件處理
+- Stream Processor 處理資料同步
+- 確保最終一致性
+- 錯誤處理與重試機制
+
+## API 設計約定
+
+### FastAPI 規範
+- 使用 Pydantic 模型驗證
+- 實現適當的錯誤處理
+- 提供 OpenAPI 文檔
+
+### 響應格式
+- 統一的 JSON 響應格式
+- 適當的 HTTP 狀態碼
+- 錯誤訊息清晰明確
+
+## Docker 化約定
+
+- 使用 [docker-compose.yml](mdc:query-service/docker-compose.yml) 管理服務
+- LocalStack 模擬 AWS 環境
+- 容器間網路配置

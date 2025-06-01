@@ -7,57 +7,29 @@
 ```txt
 scripts/
 ├── 🧪 testing/                    # 測試相關腳本
-│   ├── test_coverage.sh           # 覆蓋率測試（已更新支援根目錄）
+│   ├── test_coverage.sh           # 覆蓋率測試
 │   ├── test_full_flow.sh          # 完整流程測試
 │   └── quick_test.sh              # 快速健康檢查
 ├── 🔍 queries/                    # 查詢工具
 ├── ✅ verification/               # 驗證腳本
 ├── 🔧 development/                # 開發工具
-├── 🆕 run_tests.sh                # 統一測試執行腳本（新增）
 ├── restart_services.sh            # 服務重啟
 └── fix_api_gateway.sh            # API Gateway 修復
 ```
 
-## 🆕 新增功能
-
-### 統一測試執行腳本
-
-現在可以從專案根目錄統一執行所有測試：
-
-```bash
-# 在專案根目錄執行
-./scripts/run_tests.sh --help
-
-# 常用命令
-./scripts/run_tests.sh --all         # 執行所有測試
-./scripts/run_tests.sh --unit        # 只執行單元測試
-./scripts/run_tests.sh --integration # 只執行整合測試
-./scripts/run_tests.sh --coverage    # 生成覆蓋率報告
-./scripts/run_tests.sh --fast        # 快速測試（跳過慢速）
-```
-
-### 覆蓋率測試腳本（已更新）
-
-`testing/test_coverage.sh` 已更新為支援從根目錄運行：
-
-```bash
-# 在專案根目錄執行
-./scripts/testing/test_coverage.sh
-```
-
 ## 🚀 推薦工作流程
 
-### 🎯 日常開發
+### 🎯 日常開發（使用 Poetry）
 
 ```bash
-# 1. 快速檢查（從根目錄）
-./scripts/run_tests.sh --fast --verbose
+# 1. 安裝依賴
+poetry install
 
-# 2. 完整測試
-./scripts/run_tests.sh --all
+# 2. 快速檢查
+poetry run pytest tests/ -v
 
 # 3. 覆蓋率檢查
-./scripts/run_tests.sh --coverage
+poetry run pytest --cov=query-service/eks_handler --cov-report=html
 ```
 
 ### 🧪 深度測試
@@ -103,13 +75,41 @@ pwd  # 應該顯示 .../aws-cqrs-test
 ./scripts/[category]/[script-name].sh
 ```
 
-### 舊方式（仍然支援）
+## 📦 Poetry 工作流程
 
-你仍然可以進入子目錄執行特定腳本：
+### 基本命令
 
 ```bash
-cd query-service
-pytest tests/test_eks_handler.py -v
+# 安裝依賴
+poetry install
+
+# 進入虛擬環境
+poetry shell
+
+# 執行測試
+poetry run pytest
+
+# 運行特定測試
+poetry run pytest tests/test_eks_handler.py -v
+
+# 生成覆蓋率報告
+poetry run pytest --cov=query-service/eks_handler --cov-report=html
+```
+
+### 開發工具
+
+```bash
+# 代碼格式化
+poetry run black query-service/eks_handler/
+
+# import 排序
+poetry run isort query-service/eks_handler/
+
+# 類型檢查
+poetry run mypy query-service/eks_handler/
+
+# 預提交檢查
+poetry run pre-commit run --all-files
 ```
 
 ## 📊 測試輸出說明
@@ -117,10 +117,13 @@ pytest tests/test_eks_handler.py -v
 ### 成功示例
 
 ```txt
-🧪 測試執行腳本
-ℹ️  執行所有測試...
-===== 17 passed, 10 warnings in 2.23s =====
-✅ 測試執行完成！
+======================== test session starts ========================
+collected 17 items
+
+tests/test_eks_handler.py::test_health_check PASSED           [ 5%]
+tests/test_integration.py::test_query_user PASSED            [10%]
+...
+======================== 17 passed in 2.23s ========================
 ```
 
 ### 覆蓋率報告
@@ -128,11 +131,11 @@ pytest tests/test_eks_handler.py -v
 ```txt
 Name                                Stmts   Miss   Cover   Missing
 ------------------------------------------------------------------
-query-service/eks_handler/main.py      75     17  77.33%   73, 76-77
+query-service/eks_handler/main.py      75     17    77%   73, 76-77
 ------------------------------------------------------------------
-TOTAL                                  75     17  77.33%
+TOTAL                                  75     17    77%
 
-✅ 覆蓋率 (77%) 符合要求 (>= 70%)
+Coverage HTML written to htmlcov/index.html
 ```
 
 ## 🔧 故障排除
@@ -141,56 +144,60 @@ TOTAL                                  75     17  77.33%
 
 ```bash
 # 給腳本添加執行權限
-chmod +x scripts/run_tests.sh
 chmod +x scripts/testing/*.sh
+chmod +x scripts/queries/*.sh
 ```
 
-### 路徑問題
+### Poetry 問題
 
 ```bash
-# 確認在正確目錄
-ls pytest.ini  # 應該存在
+# 重新安裝依賴
+poetry env remove --all
+poetry install
 
-# 檢查檔案結構
-ls -la query-service/
-ls -la query-service/tests/
+# 檢查虛擬環境
+poetry env info
+
+# 更新依賴
+poetry update
 ```
 
-### 依賴問題
+### LocalStack 問題
 
 ```bash
-# 安裝測試依賴
-pip install -r query-service/requirements.txt
+# 重啟 LocalStack
+cd query-service
+docker-compose restart localstack
 
-# 檢查 Python 路徑
-python -c "import sys; print('\\n'.join(sys.path))"
+# 檢查服務狀態
+docker-compose ps
 ```
 
 ## 📝 最佳實踐
 
-1. **始終從根目錄執行**腳本
-2. **使用新的統一腳本** `./scripts/run_tests.sh`
+1. **使用 Poetry** 管理依賴和執行測試
+2. **從根目錄執行**腳本
 3. **定期執行覆蓋率測試**確保代碼品質
 4. **遇到問題時使用快速檢查**腳本診斷
 
-## ✨ 更新摘要
+## ✨ 專案特色
 
-### 🆕 新增
+### 🔧 依賴管理
 
-- ✅ 統一測試執行腳本 (`run_tests.sh`)
-- ✅ 根目錄 pytest 配置
-- ✅ 智能路徑檢測和調整
+- ✅ Poetry 統一依賴管理
+- ✅ pyproject.toml 配置
+- ✅ 自動化開發工具
 
-### 🔄 更新
+### 🧪 測試框架
 
-- ✅ 覆蓋率測試腳本支援根目錄執行
-- ✅ 清理重複配置文件
-- ✅ 統一 .gitignore 規則
+- ✅ pytest 測試框架
+- ✅ 覆蓋率報告
+- ✅ 整合測試支援
 
-### 🗑️ 清理
+### 🏗️ 架構設計
 
-- ✅ 移除重複的 pytest.ini
-- ✅ 移除重複的覆蓋率文件
-- ✅ 移除重複的 .gitignore
+- ✅ CQRS 模式實現
+- ✅ 六邊形架構
+- ✅ 事件驅動同步
 
 現在你的測試工作流程更加統一和高效！

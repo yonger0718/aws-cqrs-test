@@ -1,0 +1,69 @@
+---
+description: when starting services
+globs:
+alwaysApply: false
+---
+# 常見任務指南
+
+## 環境管理
+
+### 啟動開發環境
+```bash
+# 完整重啟服務
+./scripts/restart_services.sh
+
+# 修復 API Gateway (如需要)
+./scripts/fix_api_gateway.sh
+
+# 驗證系統環境
+./scripts/verification/verify_system.sh
+```
+
+### 檢查服務狀態
+```bash
+# 快速健康檢查
+./scripts/testing/quick_test.sh
+
+# 查詢功能測試
+./scripts/queries/simple_query.sh --all
+```
+
+## 測試執行
+
+### 單元測試
+```bash
+cd query-service
+pytest tests/test_eks_handler.py -v
+```
+
+### 整合測試
+```bash
+cd query-service
+pytest tests/test_integration.py -v
+```
+
+### 完整測試流程
+```bash
+./scripts/testing/test_full_flow.sh
+```## 查詢操作
+
+### 基本查詢測試
+- 使用 [scripts/queries/simple_query.sh](mdc:scripts/queries/simple_query.sh)
+- 支援 `--all` 參數執行所有查詢類型
+
+### 進階查詢測試
+- 使用 [scripts/queries/test_query.sh](mdc:scripts/queries/test_query.sh)
+- 提供詳細的查詢結果分析
+
+## 故障排除
+
+### 常見問題
+1. **服務啟動失敗**: 檢查 Docker 服務狀態
+2. **API 無響應**: 執行 API Gateway 修復腳本
+3. **測試失敗**: 確認 LocalStack 環境正常
+
+### 日誌查看
+```bash
+# 查看 Docker 容器日誌
+docker-compose -f query-service/docker-compose.yml logs
+```
