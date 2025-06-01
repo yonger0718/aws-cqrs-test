@@ -10,8 +10,8 @@ import pytest
 from moto import mock_dynamodb
 
 
-@pytest.fixture(scope="function")  # type: ignore[misc]
-@mock_dynamodb  # type: ignore[misc]
+@pytest.fixture(scope="function")
+@mock_dynamodb
 def dynamodb_resource() -> Generator[Any, None, None]:
     """提供 DynamoDB 資源的 fixture"""
     # 創建 DynamoDB 資源
@@ -19,7 +19,7 @@ def dynamodb_resource() -> Generator[Any, None, None]:
     yield dynamodb
 
 
-@pytest.fixture(scope="function")  # type: ignore[misc]
+@pytest.fixture(scope="function")
 def notification_records_table(dynamodb_resource: Any) -> Generator[Any, None, None]:
     """創建 notification-records 表的 fixture"""
     # 使用唯一的表名避免衝突
@@ -70,7 +70,7 @@ def notification_records_table(dynamodb_resource: Any) -> Generator[Any, None, N
     # 清理表（自動由 moto 處理）
 
 
-@pytest.fixture(scope="function")  # type: ignore[misc]
+@pytest.fixture(scope="function")
 def notification_records_table_with_data(notification_records_table: Any) -> Any:
     """創建包含測試資料的 notification-records 表"""
     # 插入測試數據
@@ -111,7 +111,7 @@ def notification_records_table_with_data(notification_records_table: Any) -> Any
     return notification_records_table
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@pytest.fixture(autouse=True)
 def cleanup_localstack_tables() -> Generator[None, None, None]:
     """在每個測試之前清理 LocalStack 中可能殘留的表"""
     # 在實際的 LocalStack 環境中運行時的清理邏輯

@@ -280,7 +280,7 @@ app = FastAPI(
 # ================================
 
 
-@app.get("/health")  # type: ignore[misc]
+@app.get("/health")
 async def health_check() -> Dict[str, str]:
     """健康檢查端點"""
     return {
@@ -291,7 +291,7 @@ async def health_check() -> Dict[str, str]:
     }
 
 
-@app.post("/query/user", response_model=QueryResult)  # type: ignore[misc]
+@app.post("/query/user", response_model=QueryResult)
 async def query_user_notifications(
     request: UserQueryRequest, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
@@ -304,7 +304,7 @@ async def query_user_notifications(
     return await query_service.query_user_notifications(request.user_id)
 
 
-@app.post("/query/marketing", response_model=QueryResult)  # type: ignore[misc]
+@app.post("/query/marketing", response_model=QueryResult)
 async def query_marketing_notifications(
     request: MarketingQueryRequest, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
@@ -317,7 +317,7 @@ async def query_marketing_notifications(
     return await query_service.query_marketing_notifications(request.marketing_id)
 
 
-@app.post("/query/failures", response_model=QueryResult)  # type: ignore[misc]
+@app.post("/query/failures", response_model=QueryResult)
 async def query_failed_notifications(
     request: FailuresQueryRequest, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
@@ -330,7 +330,7 @@ async def query_failed_notifications(
     return await query_service.query_failed_notifications(request.transaction_id)
 
 
-@app.get("/")  # type: ignore[misc]
+@app.get("/")
 async def root() -> Dict[str, Any]:
     """根路径資訊"""
     return {

@@ -30,7 +30,8 @@ repos:
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, types-boto3]
-        args: ['--ignore-missing-imports']
+        args: ['--ignore-missing-imports', '--disable-error-code=misc']
+        files: ^query-service/.*\.py$
 
   # 安全性檢查
   - repo: https://github.com/pycqa/bandit

@@ -24,7 +24,7 @@ EKS_HANDLER_URL = os.environ.get("EKS_HANDLER_URL", "http://localhost:8000")
 class TestDynamoDBIntegration:
     """DynamoDB 整合測試"""
 
-    @pytest.fixture(scope="function")  # type: ignore[misc]
+    @pytest.fixture(scope="function")
     def dynamodb_client(self) -> Any:
         """建立 DynamoDB 客戶端 fixture"""
         return boto3.client(
@@ -103,7 +103,7 @@ class TestDynamoDBIntegration:
 class TestServiceEndToEnd:
     """端到端服務測試"""
 
-    @pytest.fixture(scope="function")  # type: ignore[misc]
+    @pytest.fixture(scope="function")
     def dynamodb_client(self) -> Any:
         """建立 DynamoDB 客戶端 fixture"""
         return boto3.client(
@@ -174,7 +174,7 @@ class TestServiceEndToEnd:
 class TestCQRSConsistency:
     """CQRS 一致性測試"""
 
-    @pytest.fixture(scope="function")  # type: ignore[misc]
+    @pytest.fixture(scope="function")
     def dynamodb_client(self) -> Any:
         """建立 DynamoDB 客戶端 fixture"""
         return boto3.client(

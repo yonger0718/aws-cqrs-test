@@ -341,7 +341,7 @@ class TestLambdaHandlerResponseFormat:
 class TestEnvironmentConfiguration:
     """環境配置相關測試"""
 
-    @pytest.mark.skip(reason="模組重載在 CI 環境中可能不穩定")  # type: ignore[misc]
+    @pytest.mark.skip(reason="模組重載在 CI 環境中可能不穩定")
     @patch.dict("os.environ", {"EKS_HANDLER_URL": "http://custom-eks:9000"})
     @patch("requests.post")
     def test_custom_eks_handler_url(self, mock_post: MagicMock) -> None:
@@ -370,7 +370,7 @@ class TestEnvironmentConfiguration:
             "http://custom-eks:9000/query/user", json={"user_id": "user123"}, timeout=10
         )
 
-    @pytest.mark.skip(reason="模組重載在 CI 環境中可能不穩定")  # type: ignore[misc]
+    @pytest.mark.skip(reason="模組重載在 CI 環境中可能不穩定")
     @patch.dict("os.environ", {}, clear=True)
     @patch("requests.post")
     def test_default_eks_handler_url(self, mock_post: MagicMock) -> None:

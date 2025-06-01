@@ -126,7 +126,7 @@ class TestDynamoDBValueExtractor:
 class TestCommandToQueryTransformer:
     """命令記錄轉查詢記錄轉換服務測試"""
 
-    @pytest.fixture  # type: ignore[misc]
+    @pytest.fixture
     def transformer(self) -> CommandToQueryTransformer:
         """創建轉換器實例"""
         extractor = DynamoDBValueExtractor()
@@ -270,7 +270,7 @@ class TestCommandToQueryTransformer:
 class TestStreamEventParser:
     """Stream 事件解析器測試"""
 
-    @pytest.fixture  # type: ignore[misc]
+    @pytest.fixture
     def parser(self) -> StreamEventParser:
         """創建解析器實例"""
         return StreamEventParser()
@@ -355,7 +355,7 @@ class TestStreamEventParser:
 class TestQuerySideRepository:
     """查詢端資料庫操作倉庫測試"""
 
-    @pytest.fixture(autouse=True)  # type: ignore[misc]
+    @pytest.fixture(autouse=True)
     def setup_dynamodb(self) -> None:
         """設置測試用的 DynamoDB 表"""
         self.dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
@@ -445,7 +445,7 @@ class TestQuerySideRepository:
 class TestStreamProcessorService:
     """Stream 處理服務測試"""
 
-    @pytest.fixture  # type: ignore[misc]
+    @pytest.fixture
     def service(self) -> Tuple[StreamProcessorService, MagicMock]:
         """創建服務實例和模擬的倉庫"""
         extractor = DynamoDBValueExtractor()
@@ -614,7 +614,7 @@ class TestStreamProcessorService:
 class TestLambdaHandlerIntegration:
     """Lambda Handler 整合測試"""
 
-    @mock_dynamodb  # type: ignore[misc]
+    @mock_dynamodb
     def test_lambda_handler_success(self) -> None:
         """測試 Lambda Handler 成功處理事件"""
         # 設置測試用的 DynamoDB 表
@@ -673,7 +673,7 @@ class TestLambdaHandlerIntegration:
         assert "Item" in response
         assert response["Item"]["transaction_id"] == "tx001"
 
-    @mock_dynamodb  # type: ignore[misc]
+    @mock_dynamodb
     def test_lambda_handler_empty_records(self) -> None:
         """測試 Lambda Handler 處理空記錄"""
         # 設置測試用的 DynamoDB 表
