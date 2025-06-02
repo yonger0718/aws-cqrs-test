@@ -48,4 +48,5 @@ alwaysApply: false
 - Sanitize all inputs.
 - Validate all inputs.
 - Use environment variables for sensitive configuration.
-- Always use classes instead of function
+- Always use classes instead of function.
+- Always run test cases after modifying codes. If error appears, fix it.

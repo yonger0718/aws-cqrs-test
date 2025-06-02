@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+- Always run pre-commit after any changes. If error appears, fix it.
