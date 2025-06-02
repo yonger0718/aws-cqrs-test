@@ -87,13 +87,13 @@ poetry run pytest tests/ -v --cov
 
 ```bash
 # 啟動服務
-docker-compose up -d
+docker compose up -d
 
 # 檢查服務狀態
-docker-compose ps
+docker compose ps
 
 # 查看日誌
-docker-compose logs eks-handler
+docker compose logs eks-handler
 ```
 
 ### LocalStack 初始化
@@ -145,7 +145,7 @@ poetry run pytest --cov=eks_handler --cov-report=html
 
 ```bash
 # 確保服務已啟動
-docker-compose up -d
+docker compose up -d
 
 # 執行整合測試
 poetry run pytest tests/test_integration.py -v

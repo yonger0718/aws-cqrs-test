@@ -35,6 +35,7 @@ from eks_handler.main import app  # noqa: E402
 client = TestClient(app)
 
 
+@pytest.mark.unit
 class TestHealthCheck:
     """健康檢查端點測試"""
 
@@ -52,6 +53,7 @@ class TestHealthCheck:
         assert data["architecture"] == "CQRS + Hexagonal"
 
 
+@pytest.mark.unit
 class TestRootEndpoint:
     """根端點測試"""
 
@@ -71,6 +73,7 @@ class TestRootEndpoint:
         assert "/health" in endpoints.values()
 
 
+@pytest.mark.unit
 class TestUserQuery:
     """用戶查詢端點測試"""
 
@@ -123,6 +126,7 @@ class TestUserQuery:
         assert "Lambda connection failed" in response.json()["detail"]
 
 
+@pytest.mark.unit
 class TestMarketingQuery:
     """行銷活動查詢端點測試"""
 
@@ -160,6 +164,7 @@ class TestMarketingQuery:
         assert data["total_count"] == 1
 
 
+@pytest.mark.unit
 class TestFailuresQuery:
     """失敗查詢端點測試"""
 
@@ -198,6 +203,7 @@ class TestFailuresQuery:
         assert data["total_count"] == 1
 
 
+@pytest.mark.unit
 class TestEdgeCases:
     """邊界情況測試"""
 

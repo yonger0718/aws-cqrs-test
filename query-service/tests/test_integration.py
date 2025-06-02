@@ -1,10 +1,6 @@
 """
-整合測試模組
-
-測試各個組件之間的整合，包括：
-- DynamoDB 整合
-- Lambda 函數整合
-- CQRS 流程整合
+整合測試
+測試服務之間的實際互動和數據流
 """
 
 import os
@@ -16,11 +12,12 @@ import boto3
 import pytest
 import requests
 
-# 測試配置
+# 設定測試環境
 LOCALSTACK_URL = os.environ.get("LOCALSTACK_URL", "http://localhost:4566")
 EKS_HANDLER_URL = os.environ.get("EKS_HANDLER_URL", "http://localhost:8000")
 
 
+@pytest.mark.integration
 class TestDynamoDBIntegration:
     """DynamoDB 整合測試"""
 
@@ -100,6 +97,7 @@ class TestDynamoDBIntegration:
         assert len(primary_keys) >= 1
 
 
+@pytest.mark.integration
 class TestServiceEndToEnd:
     """端到端服務測試"""
 
@@ -171,6 +169,7 @@ class TestServiceEndToEnd:
                 pass  # 忽略清理錯誤
 
 
+@pytest.mark.integration
 class TestCQRSConsistency:
     """CQRS 一致性測試"""
 
@@ -204,6 +203,7 @@ class TestCQRSConsistency:
             print(f"\n同步率: {sync_rate:.1f}% ({query_count}/{command_count})")
 
 
+@pytest.mark.integration
 class TestPerformance:
     """性能測試"""
 

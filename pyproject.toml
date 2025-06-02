@@ -58,6 +58,11 @@ addopts = [
     "--cov-report=xml",
     "--cov-fail-under=75"
 ]
+markers = [
+    "unit: marks tests as unit tests (fast, no external dependencies)",
+    "integration: marks tests as integration tests (require external services)",
+    "slow: marks tests as slow running"
+]
 
 [tool.black]
 line-length = 100

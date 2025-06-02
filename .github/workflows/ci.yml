@@ -148,7 +148,7 @@ jobs:
 
       - name: Run unit tests with coverage
         run: |
-          poetry run pytest query-service/tests/test_eks_handler.py \
+          poetry run pytest -m unit \
             --cov=query-service/eks_handler \
             --cov-report=xml \
             --cov-report=term \
@@ -242,20 +242,9 @@ jobs:
         env:
           LOCALSTACK_URL: http://localhost:4566
         run: |
-          poetry run pytest query-service/tests/test_integration.py \
-            --cov=query-service/eks_handler \
-            --cov-append \
-            --cov-report=xml
-
-      - name: Upload integration coverage to Codecov
-        uses: codecov/codecov-action@v5
-        with:
-          file: ./coverage.xml
-          flags: integration
-          name: codecov-integration
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
-          slug: yonger0718/aws-cqrs-test
+          poetry run pytest -m integration \
+            -v \
+            --tb=short
 
   # Docker 映像建置和推送 - 暫時停用
   # docker-build:
