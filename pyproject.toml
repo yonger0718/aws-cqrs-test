@@ -25,6 +25,11 @@ flake8 = "^6.0.0"
 mypy = "^1.5.0"
 pre-commit = "^3.3.0"
 types-requests = "^2.32.0.20250515"
+bandit = "^1.8.0"
+detect-secrets = "^1.5.0"
+safety = "^3.2.0"
+types-boto3 = "^1.0.2"
+tomli = "^2.0.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^7.4.0"
@@ -33,6 +38,7 @@ pytest-asyncio = "^0.21.0"
 pytest-forked = "^1.6.0"
 httpx = "^0.24.0"
 moto = "^4.2.0"
+awscli-local = "^0.22"
 
 [build-system]
 requires = ["poetry-core"]
@@ -54,7 +60,7 @@ addopts = [
 ]
 
 [tool.black]
-line-length = 88
+line-length = 100
 target-version = ['py312']
 include = '\.pyi?$'
 extend-exclude = '''
@@ -74,7 +80,7 @@ extend-exclude = '''
 [tool.isort]
 profile = "black"
 multi_line_output = 3
-line_length = 88
+line_length = 100
 known_first_party = ["eks_handler", "lambdas"]
 
 [tool.mypy]
@@ -116,3 +122,13 @@ exclude_lines = [
     "except ImportError:",
     "except ModuleNotFoundError:"
 ]
+
+[tool.bandit]
+# Bandit 安全性檢查配置
+exclude_dirs = ["tests", "test_*", "__pycache__", ".venv", "venv", ".mypy_cache"]
+skips = ["B101"]  # 跳過 assert 使用檢查（測試中常見）
+confidence = "medium"
+severity = "medium"
+
+[tool.bandit.assert_used]
+skips = ["**/test_*.py", "**/tests/*"]
