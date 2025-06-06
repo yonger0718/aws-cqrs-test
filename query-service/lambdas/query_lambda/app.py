@@ -257,8 +257,71 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         # Check if this is an API Gateway event
         if "httpMethod" in event or "version" in event:
             logger.info("Processing API Gateway event")
-            # API Gateway format, use PowerTools resolver
-            return app.resolve(event, context)  # type: ignore[no-any-return]
+
+            # Extract path and query parameters from API Gateway event
+            path = event.get("path", "")
+            query_params = event.get("queryStringParameters") or {}
+
+            logger.info(f"API Gateway path: {path}, query_params: {query_params}")
+
+            # Route based on path
+            if path == "/user":
+                user_id = query_params.get("user_id")
+                if not user_id:
+                    return {
+                        "statusCode": 400,
+                        "headers": {"Content-Type": "application/json"},
+                        "body": json.dumps({"error": "Missing required parameter: user_id"}),
+                    }
+                response = eks_service.query_user_notifications(user_id)
+
+            elif path == "/marketing":
+                marketing_id = query_params.get("marketing_id")
+                if not marketing_id:
+                    return {
+                        "statusCode": 400,
+                        "headers": {"Content-Type": "application/json"},
+                        "body": json.dumps({"error": "Missing required parameter: marketing_id"}),
+                    }
+                response = eks_service.query_marketing_notifications(marketing_id)
+
+            elif path == "/fail":
+                transaction_id = query_params.get("transaction_id")
+                if not transaction_id:
+                    return {
+                        "statusCode": 400,
+                        "headers": {"Content-Type": "application/json"},
+                        "body": json.dumps({"error": "Missing required parameter: transaction_id"}),
+                    }
+                response = eks_service.query_failed_notifications(transaction_id)
+
+            else:
+                return {
+                    "statusCode": 404,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps({"error": "Path not found", "path": path}),
+                }
+
+            # Handle EKS handler response for API Gateway
+            if response.status_code == 200:
+                return {
+                    "statusCode": 200,
+                    "headers": {
+                        "Content-Type": "application/json",
+                        "Access-Control-Allow-Origin": "*",
+                        "Access-Control-Allow-Headers": (
+                            "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token"
+                        ),
+                        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+                    },
+                    "body": json.dumps(response.json()),
+                }
+            else:
+                return {
+                    "statusCode": response.status_code,
+                    "headers": {"Content-Type": "application/json"},
+                    "body": json.dumps({"error": "EKS handler error", "details": response.text}),
+                }
 
         # Direct Lambda invocation format - maintain backward compatibility
         path = event.get("path", "")

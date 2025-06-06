@@ -10,12 +10,17 @@ import pytest
 from moto import mock_dynamodb
 
 
+@pytest.fixture(autouse=True)
+def moto_dynamodb() -> Generator[None, None, None]:
+    with mock_dynamodb():
+        yield
+
+
 @pytest.fixture(scope="function")
-@mock_dynamodb
 def dynamodb_resource() -> Generator[Any, None, None]:
     """提供 DynamoDB 資源的 fixture"""
     # 創建 DynamoDB 資源
-    dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+    dynamodb = boto3.resource("dynamodb", region_name="ap-southeast-1")
     yield dynamodb
 
 

@@ -11,6 +11,7 @@ from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import boto3
+import botocore
 import pytest
 import requests
 from botocore.exceptions import ClientError
@@ -25,6 +26,57 @@ LOCALSTACK_URL = os.environ.get("LOCALSTACK_URL", "http://localhost:4566")
 EKS_HANDLER_URL = os.environ.get("EKS_HANDLER_URL", "http://localhost:8000")
 
 
+@pytest.fixture(autouse=True, scope="function")
+def ensure_dynamodb_tables() -> None:
+    """自動建立整合測試所需的 DynamoDB 表（LocalStack）"""
+    dynamodb = boto3.client(
+        "dynamodb",
+        endpoint_url=LOCALSTACK_URL,
+        region_name="ap-southeast-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    )
+    # 定義兩個表的 schema
+    tables = [
+        {
+            "TableName": "command-records",
+            "KeySchema": [
+                {"AttributeName": "transaction_id", "KeyType": "HASH"},
+                {"AttributeName": "created_at", "KeyType": "RANGE"},
+            ],
+            "AttributeDefinitions": [
+                {"AttributeName": "transaction_id", "AttributeType": "S"},
+                {"AttributeName": "created_at", "AttributeType": "N"},
+            ],
+            "BillingMode": "PAY_PER_REQUEST",
+        },
+        {
+            "TableName": "notification-records",
+            "KeySchema": [
+                {"AttributeName": "user_id", "KeyType": "HASH"},
+                {"AttributeName": "created_at", "KeyType": "RANGE"},
+            ],
+            "AttributeDefinitions": [
+                {"AttributeName": "user_id", "AttributeType": "S"},
+                {"AttributeName": "created_at", "AttributeType": "N"},
+            ],
+            "BillingMode": "PAY_PER_REQUEST",
+        },
+    ]
+    for table in tables:
+        try:
+            dynamodb.describe_table(TableName=table["TableName"])
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFoundException":
+                dynamodb.create_table(**table)
+                # 等待表建立完成
+                waiter = dynamodb.get_waiter("table_exists")
+                waiter.wait(TableName=table["TableName"])
+            else:
+                raise
+    yield
+
+
 @pytest.mark.integration
 class TestDynamoDBIntegration:
     """DynamoDB 整合測試"""
@@ -35,7 +87,7 @@ class TestDynamoDBIntegration:
         return boto3.client(
             "dynamodb",
             endpoint_url=LOCALSTACK_URL,
-            region_name="us-east-1",
+            region_name="ap-southeast-1",
             aws_access_key_id="test",
             aws_secret_access_key="test",
         )
@@ -367,7 +419,7 @@ class TestQueryServiceIntegration:
 
         # 驗證 Lambda 調用
         mock_lambda_adapter.invoke_lambda.assert_called_once_with(
-            "query_result_lambda", {"query_type": "failures", "transaction_id": "failed-txn"}
+            "query_result_lambda", {"query_type": "fail", "transaction_id": "failed-txn"}
         )
 
     async def test_query_user_notifications_http_error(
@@ -566,12 +618,12 @@ class TestAPIEndpointsIntegration:
         assert response.status_code == 422  # 驗證錯誤
 
     @patch("eks_handler.main.LambdaAdapter")
-    def test_failures_query_endpoint_validation(
+    def test_fail_query_endpoint_validation(
         self, mock_lambda_adapter_class: Mock, client: TestClient
     ) -> None:
         """測試失敗查詢端點驗證"""
         # 測試無效請求
-        response = client.post("/query/failures", json={})
+        response = client.post("/query/fail", json={})
         assert response.status_code == 422  # 驗證錯誤
 
     @patch("eks_handler.main.QueryService")
@@ -618,7 +670,7 @@ class TestAPIEndpointsIntegration:
 
     @patch("eks_handler.main.QueryService")
     @patch("eks_handler.main.LambdaAdapter")
-    def test_failures_query_endpoint_success(
+    def test_fail_query_endpoint_success(
         self, mock_lambda_adapter_class: Mock, mock_query_service_class: Mock, client: TestClient
     ) -> None:
         """測試失敗查詢端點成功情況"""
@@ -631,7 +683,7 @@ class TestAPIEndpointsIntegration:
         )
 
         # 測試請求
-        response = client.post("/query/failures", json={"transaction_id": "failed-txn"})
+        response = client.post("/query/fail", json={"transaction_id": "failed-txn"})
         assert response.status_code == 200
 
         data = response.json()
@@ -648,7 +700,7 @@ class TestServiceEndToEnd:
         return boto3.client(
             "dynamodb",
             endpoint_url=LOCALSTACK_URL,
-            region_name="us-east-1",
+            region_name="ap-southeast-1",
             aws_access_key_id="test",
             aws_secret_access_key="test",
         )
@@ -720,7 +772,7 @@ class TestCQRSConsistency:
         return boto3.client(
             "dynamodb",
             endpoint_url=LOCALSTACK_URL,
-            region_name="us-east-1",
+            region_name="ap-southeast-1",
             aws_access_key_id="test",
             aws_secret_access_key="test",
         )

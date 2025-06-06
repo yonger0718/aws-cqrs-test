@@ -18,7 +18,7 @@ EKS_ENDPOINT="http://localhost:8000"
 # 設置臨時憑證
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
-export AWS_DEFAULT_REGION=us-east-1
+export AWS_DEFAULT_REGION=ap-southeast-1
 
 echo -e "\n${CYAN}簡化查詢工具${NC}"
 echo -e "${GRAY}============${NC}\n"

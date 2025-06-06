@@ -95,15 +95,15 @@ MARKETING_ID=$(aws $AWS_COMMON_ARGS apigateway create-resource \
     --path-part "marketing" \
     --query 'id' --output text)
 
-# 創建 /query/failures 資源
-FAILURES_ID=$(aws $AWS_COMMON_ARGS apigateway create-resource \
+# 創建 /query/fail 資源
+FAIL_ID=$(aws $AWS_COMMON_ARGS apigateway create-resource \
     --rest-api-id $API_ID \
     --parent-id $QUERY_ID \
-    --path-part "failures" \
+    --path-part "fail" \
     --query 'id' --output text)
 
 # 為每個資源創建 GET 方法並整合 Lambda
-for RESOURCE_ID in $USER_ID $MARKETING_ID $FAILURES_ID; do
+for RESOURCE_ID in $USER_ID $MARKETING_ID $FAIL_ID; do
     # 創建 GET 方法
     aws $AWS_COMMON_ARGS apigateway put-method \
         --rest-api-id $API_ID \
@@ -119,7 +119,7 @@ for RESOURCE_ID in $USER_ID $MARKETING_ID $FAILURES_ID; do
         --http-method GET \
         --type AWS_PROXY \
         --integration-http-method POST \
-        --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:query_result_lambda/invocations"
+        --uri "arn:aws:apigateway:ap-southeast-1:lambda:path/2015-03-31/functions/arn:aws:lambda:ap-southeast-1:000000000000:function:query_result_lambda/invocations"
 
     # 設置方法響應
     aws $AWS_COMMON_ARGS apigateway put-method-response \
@@ -168,8 +168,8 @@ echo "$MARKETING_QUERY_RESULT" | jq .
 
 # 測試失敗記錄查詢
 echo -e "\n${CYAN}測試失敗記錄查詢:${NC}"
-FAILURES_QUERY_RESULT=$(curl -s "$API_URL/query/failures?transaction_id=tx_002")
-echo "$FAILURES_QUERY_RESULT" | jq .
+FAIL_QUERY_RESULT=$(curl -s "$API_URL/query/fail?transaction_id=tx_002")
+echo "$FAIL_QUERY_RESULT" | jq .
 
 echo -e "\n${GREEN}✅ API Gateway 修復完成${NC}"
 echo -e "${GREEN}======================================${NC}"
@@ -180,5 +180,5 @@ echo -e "${GREEN}======================================${NC}"
 echo -e "${YELLOW}測試命令:${NC}"
 echo -e "${GRAY}curl \"$API_URL/query/user?user_id=test_user_001\"${NC}"
 echo -e "${GRAY}curl \"$API_URL/query/marketing?marketing_id=campaign_2024_new_year\"${NC}"
-echo -e "${GRAY}curl \"$API_URL/query/failures?transaction_id=tx_002\"${NC}"
+echo -e "${GRAY}curl \"$API_URL/query/fail?transaction_id=tx_002\"${NC}"
 echo -e ""

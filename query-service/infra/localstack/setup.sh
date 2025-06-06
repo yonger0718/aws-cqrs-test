@@ -2,6 +2,12 @@
 
 echo "Starting LocalStack initialization..."
 
+# 設置區域環境變數
+export AWS_DEFAULT_REGION=ap-southeast-1
+export AWS_REGION=ap-southeast-1
+
+echo "Using region: $AWS_DEFAULT_REGION"
+
 # 等待 LocalStack 準備就緒
 echo "Waiting for LocalStack to be ready..."
 awslocal dynamodb list-tables
@@ -145,47 +151,71 @@ echo "Test data inserted to command table successfully."
 # 創建 Lambda 函數
 echo "Creating Lambda functions..."
 
+# 使用簡化的內聯構建方式
+echo "Building and deploying Lambda functions..."
+
+# 創建環境變數文件
+echo '{"Variables":{"LOCALSTACK_HOSTNAME":"localstack"}}' > /tmp/env.json
+echo '{"Variables":{"LOCALSTACK_HOSTNAME":"localstack","EKS_HANDLER_URL":"http://eks-handler:8000"}}' > /tmp/query_env.json
+
 cd /opt/code/lambdas
 
-# 打包 stream_processor_lambda
-cd stream_processor_lambda
-zip -r /tmp/stream_processor_lambda.zip .
+# 構建並部署 stream_processor_lambda
+echo "部署 stream_processor_lambda..."
+mkdir -p /tmp/lambda-build/stream_processor_lambda
+cp -r stream_processor_lambda/* /tmp/lambda-build/stream_processor_lambda/
+cd /tmp/lambda-build/stream_processor_lambda
+pip install --no-cache-dir -r requirements.txt -t . > /dev/null 2>&1
+find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+zip -r /tmp/stream_processor_lambda.zip . > /dev/null
 awslocal lambda create-function \
-    --function-name stream_processor_lambda \
-    --runtime python3.9 \
+    --function-name query-service-stream_processor_lambda \
+    --runtime python3.12 \
     --handler app.lambda_handler \
     --zip-file fileb:///tmp/stream_processor_lambda.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment Variables="{LOCALSTACK_HOSTNAME=localstack}"
+    --environment file:///tmp/env.json
 
-# 打包 query_lambda
-cd ../query_lambda
-zip -r /tmp/query_lambda.zip .
+# 構建並部署 query_lambda
+echo "部署 query_lambda..."
+cd /opt/code/lambdas
+mkdir -p /tmp/lambda-build/query_lambda
+cp -r query_lambda/* /tmp/lambda-build/query_lambda/
+cd /tmp/lambda-build/query_lambda
+pip install --no-cache-dir -r requirements.txt -t . > /dev/null 2>&1
+find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+zip -r /tmp/query_lambda.zip . > /dev/null
 awslocal lambda create-function \
-    --function-name query_lambda \
-    --runtime python3.9 \
+    --function-name query-service-query_lambda \
+    --runtime python3.12 \
     --handler app.lambda_handler \
     --zip-file fileb:///tmp/query_lambda.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment Variables="{LOCALSTACK_HOSTNAME=localstack,EKS_HANDLER_URL=http://eks-handler:8000}"
+    --environment file:///tmp/query_env.json
 
-# 打包 query_result_lambda
-cd ../query_result_lambda
-zip -r /tmp/query_result_lambda.zip .
+# 構建並部署 query_result_lambda
+echo "部署 query_result_lambda..."
+cd /opt/code/lambdas
+mkdir -p /tmp/lambda-build/query_result_lambda
+cp -r query_result_lambda/* /tmp/lambda-build/query_result_lambda/
+cd /tmp/lambda-build/query_result_lambda
+pip install --no-cache-dir -r requirements.txt -t . > /dev/null 2>&1
+find . -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+zip -r /tmp/query_result_lambda.zip . > /dev/null
 awslocal lambda create-function \
-    --function-name query_result_lambda \
-    --runtime python3.9 \
+    --function-name query-service-query_result_lambda \
+    --runtime python3.12 \
     --handler app.lambda_handler \
     --zip-file fileb:///tmp/query_result_lambda.zip \
     --role arn:aws:iam::000000000000:role/lambda-role \
-    --environment Variables="{LOCALSTACK_HOSTNAME=localstack}"
+    --environment file:///tmp/env.json
 
 echo "Lambda functions created successfully."
 
 # 創建 DynamoDB Stream 事件源映射
 echo "Creating DynamoDB Stream event source mapping..."
 awslocal lambda create-event-source-mapping \
-    --function-name stream_processor_lambda \
+    --function-name query-service-stream_processor_lambda \
     --event-source-arn $STREAM_ARN \
     --starting-position LATEST \
     --batch-size 10
@@ -210,36 +240,29 @@ ROOT_ID=$(awslocal apigateway get-resources \
     --rest-api-id $API_ID \
     --query 'items[0].id' --output text)
 
-# 創建 /query 資源
-QUERY_ID=$(awslocal apigateway create-resource \
-    --rest-api-id $API_ID \
-    --parent-id $ROOT_ID \
-    --path-part "query" \
-    --query 'id' --output text)
-
-# 創建 /query/user 資源
+# 創建 /user 資源
 USER_ID=$(awslocal apigateway create-resource \
     --rest-api-id $API_ID \
-    --parent-id $QUERY_ID \
+    --parent-id $ROOT_ID \
     --path-part "user" \
     --query 'id' --output text)
 
-# 創建 /query/marketing 資源
+# 創建 /marketing 資源
 MARKETING_ID=$(awslocal apigateway create-resource \
     --rest-api-id $API_ID \
-    --parent-id $QUERY_ID \
+    --parent-id $ROOT_ID \
     --path-part "marketing" \
     --query 'id' --output text)
 
-# 創建 /query/failures 資源
-FAILURES_ID=$(awslocal apigateway create-resource \
+# 創建 /fail 資源
+FAIL_ID=$(awslocal apigateway create-resource \
     --rest-api-id $API_ID \
-    --parent-id $QUERY_ID \
-    --path-part "failures" \
+    --parent-id $ROOT_ID \
+    --path-part "fail" \
     --query 'id' --output text)
 
 # 為每個資源創建 GET 方法並整合 Lambda
-for RESOURCE_ID in $USER_ID $MARKETING_ID $FAILURES_ID; do
+for RESOURCE_ID in $USER_ID $MARKETING_ID $FAIL_ID; do
     # 創建 GET 方法
     awslocal apigateway put-method \
         --rest-api-id $API_ID \
@@ -255,7 +278,7 @@ for RESOURCE_ID in $USER_ID $MARKETING_ID $FAILURES_ID; do
         --http-method GET \
         --type AWS_PROXY \
         --integration-http-method POST \
-        --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:query_lambda/invocations"
+        --uri "arn:aws:apigateway:ap-southeast-1:lambda:path/2015-03-31/functions/arn:aws:lambda:ap-southeast-1:000000000000:function:query-service-query_lambda/invocations"
 
     # 設置方法響應
     awslocal apigateway put-method-response \
@@ -294,8 +317,8 @@ echo "- API ID: $API_ID"
 echo "- Endpoint: http://localhost:4566/restapis/$API_ID/dev/_user_request_"
 echo ""
 echo "🧪 Test Commands:"
-echo "curl \"http://localhost:4566/restapis/$API_ID/dev/query/user?user_id=test_user_001\""
-echo "curl \"http://localhost:4566/restapis/$API_ID/dev/query/marketing?marketing_id=campaign_2024_new_year\""
-echo "curl \"http://localhost:4566/restapis/$API_ID/dev/query/failures?transaction_id=tx_002\""
+echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/user?user_id=test_user_001\""
+echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/marketing?marketing_id=campaign_2024_new_year\""
+echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/fail?transaction_id=tx_002\""
 echo ""
 echo "LocalStack initialization completed!"

@@ -18,6 +18,18 @@ import requests
 from app import lambda_handler
 
 
+class MockLambdaContext:
+    """模擬Lambda Context物件"""
+
+    def __init__(self) -> None:
+        self.function_name = "test-query-lambda"
+        self.memory_limit_in_mb = 128
+        self.invoked_function_arn = (
+            "arn:aws:lambda:ap-southeast-1:123456789012:function:test-query-lambda"
+        )
+        self.aws_request_id = "test-request-id"
+
+
 class TestLambdaHandlerUserQuery:
     """用戶查詢相關測試"""
 
@@ -146,11 +158,11 @@ class TestLambdaHandlerMarketingQuery:
         mock_post.assert_not_called()
 
 
-class TestLambdaHandlerFailuresQuery:
+class TestLambdaHandlerFailQuery:
     """失敗記錄查詢相關測試"""
 
     @patch("requests.post")
-    def test_failures_query_success(self, mock_post: MagicMock) -> None:
+    def test_fail_query_success(self, mock_post: MagicMock) -> None:
         """測試失敗記錄查詢成功案例"""
         # 模擬 EKS handler 響應
         mock_response = MagicMock()
@@ -169,7 +181,7 @@ class TestLambdaHandlerFailuresQuery:
         }
         mock_post.return_value = mock_response
 
-        event = {"path": "/failures", "queryStringParameters": {"transaction_id": "tx003"}}
+        event = {"path": "/fail", "queryStringParameters": {"transaction_id": "tx003"}}
 
         result = lambda_handler(event, None)
 
@@ -186,13 +198,13 @@ class TestLambdaHandlerFailuresQuery:
 
         # 驗證 EKS handler 調用
         mock_post.assert_called_once_with(
-            "http://eks-handler:8000/query/failures", json={"transaction_id": "tx003"}, timeout=10
+            "http://eks-handler:8000/query/fail", json={"transaction_id": "tx003"}, timeout=10
         )
 
     @patch("requests.post")
-    def test_failures_query_missing_transaction_id(self, mock_post: MagicMock) -> None:
+    def test_fail_query_missing_transaction_id(self, mock_post: MagicMock) -> None:
         """測試缺少 transaction_id 參數的情況"""
-        event = {"path": "/failures", "queryStringParameters": {"user_id": "user123"}}  # 錯誤的參數
+        event = {"path": "/fail", "queryStringParameters": {"user_id": "user123"}}  # 錯誤的參數
 
         result = lambda_handler(event, None)
 

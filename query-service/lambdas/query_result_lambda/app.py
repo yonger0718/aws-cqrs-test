@@ -33,13 +33,13 @@ def get_dynamodb_resource() -> Any:
         return boto3.resource(
             "dynamodb",
             endpoint_url="http://localstack:4566",
-            region_name="us-east-1",
+            region_name="ap-southeast-1",
             aws_access_key_id="test",
             aws_secret_access_key="test",
         )
     else:
         # AWS environment
-        aws_region = os.environ.get("AWS_REGION", "us-east-1")
+        aws_region = os.environ.get("AWS_REGION", "ap-southeast-1")
         logger.info(f"Initializing DynamoDB client for AWS environment in region: {aws_region}")
         return boto3.resource("dynamodb", region_name=aws_region)
 
@@ -362,10 +362,10 @@ def get_failed_notifications() -> Dict[str, Any]:
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "UnknownError")
-        logger.error(f"DynamoDB error in query_failures: {error_code}")
+        logger.error(f"DynamoDB error in query_fail: {error_code}")
         raise ServiceError(f"Database error: {error_code}")
     except Exception as e:
-        logger.error(f"Error in query_failures: {str(e)}")
+        logger.error(f"Error in query_fail: {str(e)}")
         raise InternalServerError("Internal server error")
 
 
@@ -436,7 +436,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             result = query_service.query_marketing_notifications(marketing_id)
             formatted_items = format_notification_items(result["items"])
 
-        elif query_type == "failures":
+        elif query_type == "fail":
             transaction_id = body.get("transaction_id")
             if not transaction_id or not transaction_id.strip():
                 logger.warning("Missing or empty transaction_id in direct invocation")
@@ -457,7 +457,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 "body": json.dumps(
                     {
                         "error": "Invalid query_type",
-                        "supported_types": ["user", "marketing", "failures"],
+                        "supported_types": ["user", "marketing", "fail"],
                     }
                 ),
             }

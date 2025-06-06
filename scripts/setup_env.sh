@@ -14,7 +14,7 @@ echo -e "${CYAN}設置 LocalStack 環境變量...${NC}"
 # AWS 憑證配置 (LocalStack 測試環境)
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
-export AWS_DEFAULT_REGION=us-east-1
+export AWS_DEFAULT_REGION=ap-southeast-1
 
 # LocalStack 端點配置
 export LOCALSTACK_ENDPOINT=http://localhost:4566

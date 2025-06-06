@@ -9,8 +9,10 @@ import os
 import sys
 import unittest
 from pathlib import Path
+from typing import Generator
 from unittest.mock import MagicMock, patch
 
+import pytest
 from moto import mock_dynamodb
 
 # 設置測試環境變數
@@ -48,6 +50,12 @@ def create_mock_lambda_context() -> MagicMock:
     return context
 
 
+@pytest.fixture(autouse=True)
+def moto_dynamodb() -> Generator[None, None, None]:
+    with mock_dynamodb():
+        yield
+
+
 class TestQueryResultLambda(unittest.TestCase):
     """Query Result Lambda 測試類"""
 
@@ -62,7 +70,7 @@ class TestQueryResultLambda(unittest.TestCase):
         import boto3
 
         with mock_dynamodb():
-            dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+            dynamodb = boto3.resource("dynamodb", region_name="ap-southeast-1")
             table = dynamodb.create_table(
                 TableName="test-notification-records",
                 KeySchema=[
@@ -133,7 +141,7 @@ class TestQueryResultLambda(unittest.TestCase):
         with mock_dynamodb():
             import boto3
 
-            dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+            dynamodb = boto3.resource("dynamodb", region_name="ap-southeast-1")
             table = dynamodb.create_table(
                 TableName="test-notification-records",
                 KeySchema=[
@@ -236,7 +244,7 @@ class TestQueryServiceMethods(unittest.TestCase):
         """設置測試環境"""
         import boto3
 
-        self.dynamodb = boto3.resource("dynamodb", region_name="us-east-1")
+        self.dynamodb = boto3.resource("dynamodb", region_name="ap-southeast-1")
         self.table = self.dynamodb.create_table(
             TableName="test-notification-records",
             KeySchema=[

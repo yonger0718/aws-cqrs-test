@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 # 端點設定
 AWS_ENDPOINT="http://localhost:4566"
 EKS_ENDPOINT="http://localhost:8000"
-AWS_REGION="us-east-1"
+AWS_REGION="ap-southeast-1"
 
 # 設置臨時憑證
 export AWS_ACCESS_KEY_ID=test
@@ -68,8 +68,8 @@ if [ ! -z "$API_ID" ]; then
     echo "$MARKETING_QUERY_RESULT" | jq .
 
     echo -e "\n${CYAN}測試失敗記錄查詢:${NC}"
-    FAILURES_QUERY_RESULT=$(curl -s "$API_URL/query/failures?transaction_id=tx_002")
-    echo "$FAILURES_QUERY_RESULT" | jq .
+    FAIL_QUERY_RESULT=$(curl -s "$API_URL/query/fail?transaction_id=tx_002")
+    echo "$FAIL_QUERY_RESULT" | jq .
 fi
 
 # 直接測試 EKS Handler

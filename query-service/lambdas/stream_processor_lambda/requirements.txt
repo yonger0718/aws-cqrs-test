@@ -1,2 +1,3 @@
-boto3==1.26.137
+boto3==1.38.30
 aws-lambda-powertools==3.13.0
+aws-xray-sdk==2.14.0

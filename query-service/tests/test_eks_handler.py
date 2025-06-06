@@ -69,7 +69,7 @@ class TestRootEndpoint:
         endpoints = data["endpoints"]
         assert "/query/user" in endpoints.values()
         assert "/query/marketing" in endpoints.values()
-        assert "/query/failures" in endpoints.values()
+        assert "/query/fail" in endpoints.values()
         assert "/health" in endpoints.values()
 
 
@@ -165,11 +165,11 @@ class TestMarketingQuery:
 
 
 @pytest.mark.unit
-class TestFailuresQuery:
+class TestFailQuery:
     """失敗查詢端點測試"""
 
     @patch("eks_handler.main.LambdaAdapter")
-    def test_query_failures_success(self, mock_lambda_adapter_class: Any) -> None:
+    def test_query_fail_success(self, mock_lambda_adapter_class: Any) -> None:
         """測試成功查詢失敗的推播記錄"""
         # 設置 LambdaAdapter 的 mock
         mock_lambda_adapter = mock_lambda_adapter_class.return_value
@@ -191,7 +191,7 @@ class TestFailuresQuery:
         )
 
         # 發送請求
-        response = client.post("/query/failures", json={"transaction_id": "txn-789"})
+        response = client.post("/query/fail", json={"transaction_id": "txn-789"})
 
         # 驗證結果
         assert response.status_code == 200
@@ -304,14 +304,14 @@ class TestEdgeCases:
         assert "Failed to query marketing notifications" in response.json()["detail"]
 
     @patch("eks_handler.main.LambdaAdapter")
-    def test_query_failures_exception_handling(self, mock_lambda_adapter_class: Any) -> None:
+    def test_query_fail_exception_handling(self, mock_lambda_adapter_class: Any) -> None:
         """測試失敗查詢的異常處理"""
         mock_lambda_adapter = mock_lambda_adapter_class.return_value
         mock_lambda_adapter.invoke_lambda = AsyncMock(
             side_effect=ValueError("Invalid transaction ID")
         )
 
-        response = client.post("/query/failures", json={"transaction_id": "txn-789"})
+        response = client.post("/query/fail", json={"transaction_id": "txn-789"})
 
         assert response.status_code == 500
         assert "Failed to query failed notifications" in response.json()["detail"]

@@ -53,7 +53,7 @@ else
     # 創建 Lambda 函數
     aws --endpoint-url=$AWS_ENDPOINT lambda create-function \
         --function-name api_gateway_proxy \
-        --runtime python3.9 \
+        --runtime python3.12 \
         --role arn:aws:iam::000000000000:role/lambda-role \
         --handler app.lambda_handler \
         --zip-file fileb://function.zip \

@@ -99,12 +99,12 @@ class LambdaAdapter(LambdaInvokerPort):
     def __init__(self) -> None:
         """初始化 Lambda 客戶端"""
         session = boto3.Session()
-        region_name = session.region_name or "us-east-1"
+        region_name = session.region_name or "ap-southeast-1"
 
         if self._is_local_development():
             # 開發環境：使用 LocalStack
             self.lambda_client = boto3.client(
-                "lambda", endpoint_url="http://localhost:4566", region_name=region_name
+                "lambda", endpoint_url="http://localstack:4566", region_name=region_name
             )
         else:
             # 生產環境：使用 AWS Lambda
@@ -196,7 +196,7 @@ class QueryService(QueryPort):
     async def query_failed_notifications(self, transaction_id: str) -> QueryResult:
         """查詢失敗推播記錄"""
         try:
-            payload = {"query_type": "failures", "transaction_id": transaction_id}
+            payload = {"query_type": "fail", "transaction_id": transaction_id}
             result = await self.lambda_adapter.invoke_lambda("query_result_lambda", payload)
 
             return self._process_query_result(
@@ -253,7 +253,7 @@ class MarketingQueryRequest(BaseModel):
     marketing_id: str = Field(..., min_length=1, description="行銷活動ID")
 
 
-class FailuresQueryRequest(BaseModel):
+class FailQueryRequest(BaseModel):
     transaction_id: str = Field(..., min_length=1, description="交易ID")
 
 
@@ -317,9 +317,9 @@ async def query_marketing_notifications(
     return await query_service.query_marketing_notifications(request.marketing_id)
 
 
-@app.post("/query/failures", response_model=QueryResult)
+@app.post("/query/fail", response_model=QueryResult)
 async def query_failed_notifications(
-    request: FailuresQueryRequest, query_service: QueryService = Depends(get_query_service)
+    request: FailQueryRequest, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
     """
     根據 transaction_id 查詢失敗的推播記錄
@@ -341,7 +341,7 @@ async def root() -> Dict[str, Any]:
         "endpoints": {
             "user_query": "/query/user",
             "marketing_query": "/query/marketing",
-            "failures_query": "/query/failures",
+            "fail_query": "/query/fail",
             "health": "/health",
             "docs": "/docs",
         },
