@@ -1,0 +1,44 @@
+version: "3.8"
+
+services:
+  # Stream Processor Lambda
+  stream-processor-lambda:
+    build:
+      context: ./stream_processor_lambda
+      dockerfile: Dockerfile
+    image: query-service-stream-processor-lambda:latest
+    container_name: stream-processor-lambda-build
+    environment:
+      - AWS_LAMBDA_FUNCTION_NAME=query-service-stream_processor_lambda
+      - LOCALSTACK_HOSTNAME=localstack
+      - AWS_REGION=ap-southeast-1
+      - NOTIFICATION_TABLE_NAME=notification-records
+
+  # Query Lambda
+  query-lambda:
+    build:
+      context: ./query_lambda
+      dockerfile: Dockerfile
+    image: query-service-query-lambda:latest
+    container_name: query-lambda-build
+    environment:
+      - AWS_LAMBDA_FUNCTION_NAME=query-service-query_lambda
+      - EKS_HANDLER_URL=http://eks-handler:8000
+      - REQUEST_TIMEOUT=10
+
+  # Query Result Lambda
+  query-result-lambda:
+    build:
+      context: ./query_result_lambda
+      dockerfile: Dockerfile
+    image: query-service-query-result-lambda:latest
+    container_name: query-result-lambda-build
+    environment:
+      - AWS_LAMBDA_FUNCTION_NAME=query-service-query_result_lambda
+      - LOCALSTACK_HOSTNAME=localstack
+      - AWS_REGION=ap-southeast-1
+      - NOTIFICATION_TABLE_NAME=notification-records
+
+networks:
+  default:
+    name: query-service-lambda-network

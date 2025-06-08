@@ -181,7 +181,7 @@ echo -e "${GREEN}✅ 使用指南已創建: scripts/README_USAGE.md${NC}"
 echo -e "\n${YELLOW}7. 修復建議...${NC}"
 
 # 檢查常見問題並提供修復建議
-if ! curl -s http://localhost:4566/health > /dev/null 2>&1; then
+if ! curl -s http://localhost:4566/_localstack/health > /dev/null 2>&1; then
     echo -e "${YELLOW}⚠️  LocalStack 未運行${NC}"
     echo -e "${GRAY}   修復: cd query-service && docker-compose up -d localstack${NC}"
 fi

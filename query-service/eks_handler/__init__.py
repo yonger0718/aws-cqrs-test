@@ -1,7 +1,14 @@
-# Query Service EKS Handler
+# Query Service ECS Handler
 # CQRS + Hexagonal Architecture Implementation
 
-from .main import LambdaAdapter, NotificationRecord, QueryPort, QueryResult, QueryService, app
+from .main import InternalAPIAdapter, NotificationRecord, QueryPort, QueryResult, QueryService, app
 
-__version__ = "2.0.0"
-__all__ = ["NotificationRecord", "QueryResult", "QueryPort", "QueryService", "LambdaAdapter", "app"]
+__version__ = "3.0.0"
+__all__ = [
+    "NotificationRecord",
+    "QueryResult",
+    "QueryPort",
+    "QueryService",
+    "InternalAPIAdapter",
+    "app",
+]

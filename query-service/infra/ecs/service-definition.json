@@ -1,0 +1,52 @@
+{
+  "serviceName": "query-service",
+  "cluster": "query-service-cluster",
+  "taskDefinition": "query-service-task",
+  "desiredCount": 2,
+  "launchType": "FARGATE",
+  "platformVersion": "LATEST",
+  "networkConfiguration": {
+    "awsvpcConfiguration": {
+      "subnets": ["subnet-XXXXXXXXX", "subnet-YYYYYYYYY"],
+      "securityGroups": ["sg-XXXXXXXXX"],
+      "assignPublicIp": "DISABLED"
+    }
+  },
+  "loadBalancers": [
+    {
+      "targetGroupArn": "arn:aws:elasticloadbalancing:ap-southeast-1:ACCOUNT_ID:targetgroup/query-service-tg/XXXXXXXXX",
+      "containerName": "query-service-container",
+      "containerPort": 8000
+    }
+  ],
+  "serviceRegistries": [
+    {
+      "registryArn": "arn:aws:servicediscovery:ap-southeast-1:ACCOUNT_ID:service/srv-XXXXXXXXX",
+      "containerName": "query-service-container",
+      "containerPort": 8000
+    }
+  ],
+  "deploymentConfiguration": {
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 50,
+    "deploymentCircuitBreaker": {
+      "enable": true,
+      "rollback": true
+    }
+  },
+  "enableExecuteCommand": true,
+  "tags": [
+    {
+      "key": "Environment",
+      "value": "production"
+    },
+    {
+      "key": "Service",
+      "value": "query-service"
+    },
+    {
+      "key": "Architecture",
+      "value": "CQRS"
+    }
+  ]
+}

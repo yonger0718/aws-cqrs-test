@@ -50,6 +50,7 @@ class CommandRecord:
     device_token: Optional[str] = None
     payload: Optional[str] = None
     error_msg: Optional[str] = None
+    ap_id: Optional[str] = None
 
 
 @dataclass
@@ -64,6 +65,7 @@ class QueryRecord:
     platform: Platform
     marketing_id: Optional[str] = None
     error_msg: Optional[str] = None
+    ap_id: Optional[str] = None
 
 
 def get_dynamodb_resource() -> Any:
@@ -164,6 +166,7 @@ def parse_command_record(dynamo_record: Dict[str, Any]) -> CommandRecord:
             device_token=extract_value(dynamo_record, "device_token"),
             payload=extract_value(dynamo_record, "payload"),
             error_msg=extract_value(dynamo_record, "error_msg"),
+            ap_id=extract_value(dynamo_record, "ap_id"),
         )
     except (ValueError, KeyError) as e:
         logger.error(
@@ -186,6 +189,7 @@ def transform_to_query_record(command_record: CommandRecord) -> QueryRecord:
         platform=command_record.platform,
         marketing_id=command_record.marketing_id,
         error_msg=command_record.error_msg,
+        ap_id=command_record.ap_id,
     )
 
 
@@ -208,6 +212,8 @@ def save_query_record(query_record: QueryRecord) -> None:
             item["marketing_id"] = query_record.marketing_id
         if query_record.error_msg:
             item["error_msg"] = query_record.error_msg
+        if query_record.ap_id:
+            item["ap_id"] = query_record.ap_id
 
         table.put_item(Item=item)
         logger.info(f"Successfully saved query record: {query_record.transaction_id}")

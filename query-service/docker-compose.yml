@@ -15,6 +15,9 @@ services:
       - DEFAULT_REGION=ap-southeast-1
       - AWS_DEFAULT_REGION=ap-southeast-1
       - AWS_REGION=ap-southeast-1
+      # Docker Lambda 支援
+      - LAMBDA_DOCKER_FLAGS=-e AWS_LAMBDA_FUNCTION_NAME -e LOCALSTACK_HOSTNAME -e AWS_REGION
+      - LAMBDA_REMOVE_CONTAINERS=true
     volumes:
       - "${LOCALSTACK_VOLUME_DIR:-./volume}:/var/lib/localstack"
       - "/var/run/docker.sock:/var/run/docker.sock"
@@ -28,15 +31,17 @@ services:
       timeout: 5s
       retries: 5
 
-  eks-handler:
-    container_name: eks-handler
+  ecs-handler:
+    container_name: ecs-handler
     build:
       context: ./eks_handler
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
     environment:
-      - LOCALSTACK_ENDPOINT=http://localstack:4566
+      - ENVIRONMENT=development
+      - INTERNAL_API_URL=http://localstack:4566/restapis/test-api-id/local/_user_request_
+      - REQUEST_TIMEOUT=30
       - AWS_ACCESS_KEY_ID=test
       - AWS_SECRET_ACCESS_KEY=test
       - AWS_DEFAULT_REGION=ap-southeast-1
@@ -47,6 +52,48 @@ services:
       - query-service-network
     command:
       ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # Lambda Docker 映像構建服務
+  lambda-builder:
+    container_name: lambda-builder
+    image: ubuntu:22.04
+    volumes:
+      - "./lambdas:/workspace/lambdas"
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    working_dir: /workspace/lambdas
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    networks:
+      - query-service-network
+    command: >
+      bash -c "
+        apt-get update -q &&
+        apt-get install -y -q docker.io curl &&
+        echo '🐳 開始構建 Lambda Docker 映像...' &&
+        docker-compose -f docker-compose.lambda.yml build &&
+        echo '✅ Lambda Docker 映像構建完成'
+      "
+    profiles:
+      - lambda-build # 只在使用 --profile lambda-build 時啟動
+
+  # 可選：新增 ECS 版本的服務用於生產環境測試
+  # ecs-handler-prod:
+  #   container_name: ecs-handler-prod
+  #   build:
+  #     context: ./eks_handler
+  #     dockerfile: Dockerfile.ecs
+  #   ports:
+  #     - "8001:8000"
+  #   environment:
+  #     - ENVIRONMENT=production
+  #     - INTERNAL_API_URL=https://internal-api-gateway.amazonaws.com/v1
+  #     - REQUEST_TIMEOUT=30
+  #     - AWS_DEFAULT_REGION=ap-southeast-1
+  #   networks:
+  #     - query-service-network
+  #   command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+  #   profiles:
+  #     - production # 只在使用 --profile production 時啟動
 
 networks:
   query-service-network:

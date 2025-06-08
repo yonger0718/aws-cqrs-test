@@ -50,7 +50,7 @@ UNIT_EXIT_CODE=$?
 
 echo -e "\n${YELLOW}4. 執行整合測試 (附加覆蓋率)...${NC}"
 # 檢查是否有 LocalStack 運行
-if curl -s http://localhost:4566/health >/dev/null 2>&1; then
+if curl -s http://localhost:4566/_localstack/health >/dev/null 2>&1; then
     poetry run pytest query-service/tests/test_integration.py -v \
         --cov=query-service/eks_handler \
         --cov-append \

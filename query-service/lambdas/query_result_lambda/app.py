@@ -341,7 +341,7 @@ def get_marketing_notifications() -> Dict[str, Any]:
         raise InternalServerError("Internal server error")
 
 
-@app.get("/failed")
+@app.get("/fail")
 @tracer.capture_method
 def get_failed_notifications() -> Dict[str, Any]:
     """Query failed notification records"""

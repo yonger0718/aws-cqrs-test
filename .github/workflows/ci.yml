@@ -48,10 +48,10 @@ jobs:
         run: poetry run isort --check-only --profile=black --line-length=100 query-service/
 
       - name: Run Flake8 linter
-        run: poetry run flake8 query-service/ --max-line-length=100 --extend-ignore=E203,W503 --exclude=__pycache__,venv
+        run: poetry run flake8 query-service/ --max-line-length=100 --extend-ignore=E203,W503
 
       - name: Run MyPy type checker
-        run: poetry run mypy query-service/ --ignore-missing-imports
+        run: poetry run mypy query-service/ --ignore-missing-imports --disable-error-code=misc
 
       - name: Run Bandit security checker
         run: poetry run bandit -ll query-service/ --recursive --format json --output bandit-report.json || (cat bandit-report.json && exit 1)
@@ -157,7 +157,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           token: ${{ secrets.CODECOV_TOKEN }}

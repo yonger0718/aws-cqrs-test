@@ -20,6 +20,13 @@ export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=ap-southeast-1
 
+# 設定 Poetry 路徑
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# 切換到專案根目錄
+cd "$PROJECT_ROOT"
+
 echo -e "\n${CYAN}簡化查詢工具${NC}"
 echo -e "${GRAY}============${NC}\n"
 
@@ -28,7 +35,7 @@ check_services() {
     echo -e "${YELLOW}1. 檢查服務狀態...${NC}"
 
     # 檢查 LocalStack
-    if curl -s "$AWS_ENDPOINT/health" >/dev/null; then
+    if curl -s "$AWS_ENDPOINT/_localstack/health" >/dev/null; then
         echo -e "${GREEN}✅ LocalStack 運行中${NC}"
     else
         echo -e "${RED}❌ LocalStack 未運行${NC}"
@@ -50,18 +57,18 @@ query_dynamodb() {
 
     # 列出表
     echo -e "${CYAN}表列表:${NC}"
-    aws --endpoint-url=$AWS_ENDPOINT dynamodb list-tables --query "TableNames[]" --output text | tr '\t' '\n' | while read table; do
+    poetry run aws --endpoint-url=$AWS_ENDPOINT dynamodb list-tables --query "TableNames[]" --output text | tr '\t' '\n' | while read table; do
         echo -e "  - ${CYAN}$table${NC}"
     done
 
     # 檢查 command-records 表數據
     echo -e "\n${CYAN}command-records 表統計:${NC}"
-    COMMAND_COUNT=$(aws --endpoint-url=$AWS_ENDPOINT dynamodb scan --table-name command-records --select "COUNT" --query "Count" --output text)
+    COMMAND_COUNT=$(poetry run aws --endpoint-url=$AWS_ENDPOINT dynamodb scan --table-name command-records --select "COUNT" --query "Count" --output text)
     echo -e "  記錄數: ${GREEN}$COMMAND_COUNT${NC}"
 
     # 檢查 notification-records 表數據
     echo -e "\n${CYAN}notification-records 表統計:${NC}"
-    NOTIFICATION_COUNT=$(aws --endpoint-url=$AWS_ENDPOINT dynamodb scan --table-name notification-records --select "COUNT" --query "Count" --output text)
+    NOTIFICATION_COUNT=$(poetry run aws --endpoint-url=$AWS_ENDPOINT dynamodb scan --table-name notification-records --select "COUNT" --query "Count" --output text)
     echo -e "  記錄數: ${GREEN}$NOTIFICATION_COUNT${NC}"
 }
 

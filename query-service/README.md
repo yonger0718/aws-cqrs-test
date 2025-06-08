@@ -7,27 +7,28 @@
 查詢服務負責處理所有的讀取操作，通過 API Gateway 接收請求，並從專門的查詢數據表中檢索數據。
 
 ```txt
-用戶請求 → API Gateway → Query Lambda → EKS Handler → Query Table
+用戶請求 → API Gateway → Query Lambda → ECS Handler → Internal API Gateway → Query Result Lambda → Query Table
 ```
 
 ## 📁 目錄結構
 
 ```txt
 query-service/
-├── eks_handler/                      # FastAPI 應用（六邊形架構）
+├── eks_handler/                      # FastAPI 應用（六邊形架構，ECS 容器）
 │   ├── main.py                       # 主應用程序
-│   ├── Dockerfile                    # 容器配置
+│   ├── Dockerfile                    # ECS 容器配置
 │   └── requirements.txt              # 服務依賴
 ├── lambdas/                          # AWS Lambda 函數
 │   ├── query_lambda/                 # API Gateway 入口
-│   ├── query_result_lambda/          # 查詢處理邏輯
+│   ├── query_result_lambda/          # 查詢處理邏輯（透過 Internal API Gateway）
 │   └── stream_processor_lambda/      # DynamoDB Stream 處理
 ├── tests/                            # 測試套件
-│   ├── test_eks_handler.py           # 單元測試
+│   ├── test_eks_handler.py           # 單元測試（HTTP 通信架構）
 │   └── test_integration.py           # 整合測試
 ├── infra/                            # 基礎設施配置
-│   └── localstack/setup.sh          # LocalStack 初始化
-├── docker-compose.yml               # 服務編排
+│   ├── localstack/setup.sh          # LocalStack 初始化
+│   └── terraform/                    # ECS/Terraform 部署配置
+├── docker-compose.yml               # 本地開發環境
 └── requirements.txt                  # Lambda 依賴
 ```
 
@@ -41,6 +42,7 @@ query-service/
 | `created_at`         | Number (N) | Sort Key，毫秒時間戳      |
 | `user_id`            | String (S) | 用戶識別碼                |
 | `marketing_id`       | String (S) | 活動代碼                  |
+| `ap_id`              | String (S) | 服務來源 AP ID            |
 | `notification_title` | String (S) | 通知標題                  |
 | `status`             | String (S) | SENT / DELIVERED / FAILED |
 | `platform`           | String (S) | IOS / ANDROID / WEBPUSH   |
@@ -58,6 +60,7 @@ query-service/
 | `created_at`         | Number (N) | Sort Key，毫秒時間戳，支援倒序查詢 |
 | `transaction_id`     | String (S) | 交易 ID                            |
 | `marketing_id`       | String (S) | 活動代碼                           |
+| `ap_id`              | String (S) | 服務來源 AP ID                     |
 | `notification_title` | String (S) | 通知標題                           |
 | `status`             | String (S) | SENT / DELIVERED / FAILED          |
 | `platform`           | String (S) | IOS / ANDROID / WEBPUSH            |
@@ -83,7 +86,59 @@ poetry shell
 poetry run pytest tests/ -v --cov
 ```
 
-### 使用 Docker Compose
+### 🐳 Docker 化部署（推薦）
+
+我們提供了完整的 Docker 化部署解決方案，包括容器化的 Lambda 函數：
+
+```bash
+# 一鍵啟動完整環境（包含 Lambda Docker 部署）
+./deploy_docker.sh start
+
+# 構建 Lambda Docker 映像
+./deploy_docker.sh build
+
+# 部署 Lambda 函數
+./deploy_docker.sh deploy
+
+# 檢查服務狀態
+./deploy_docker.sh status
+
+# 執行集成測試
+./deploy_docker.sh test
+
+# 查看服務日誌
+./deploy_docker.sh logs
+
+# 停止所有服務
+./deploy_docker.sh stop
+
+# 清理所有資源
+./deploy_docker.sh clean
+```
+
+#### Lambda Docker 映像結構
+
+每個 Lambda 函數都有自己的 Dockerfile：
+
+```txt
+lambdas/
+├── docker-compose.lambda.yml         # Lambda 映像構建配置
+├── deploy_docker_lambdas.sh          # Docker 部署腳本
+├── stream_processor_lambda/
+│   ├── Dockerfile                    # 🐳 Stream 處理器容器
+│   ├── .dockerignore                 # Docker 忽略檔案
+│   └── app.py
+├── query_lambda/
+│   ├── Dockerfile                    # 🐳 查詢入口容器
+│   ├── .dockerignore
+│   └── app.py
+└── query_result_lambda/
+    ├── Dockerfile                    # 🐳 查詢結果容器
+    ├── .dockerignore
+    └── app.py
+```
+
+### 傳統 Docker Compose 部署
 
 ```bash
 # 啟動服務
@@ -93,13 +148,22 @@ docker compose up -d
 docker compose ps
 
 # 查看日誌
-docker compose logs eks-handler
+docker compose logs ecs-handler
 ```
 
 ### LocalStack 初始化
 
+#### Docker 版本（推薦）
+
 ```bash
-# 等待 LocalStack 啟動後執行
+# 使用 Docker 化的 Lambda 部署
+docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup_docker.sh
+```
+
+#### 傳統版本
+
+```bash
+# 使用 ZIP 包部署
 docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 ```
 
@@ -109,7 +173,7 @@ docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
 | ------------------ | ---- | ------------------ |
 | `/query/user`      | GET  | 查詢用戶推播記錄   |
 | `/query/marketing` | GET  | 查詢活動推播統計   |
-| `/query/failures`  | GET  | 查詢失敗推播記錄   |
+| `/query/fail`      | GET  | 查詢失敗推播記錄   |
 | `/health`          | GET  | 健康檢查           |
 | `/docs`            | GET  | API 文檔 (Swagger) |
 
@@ -123,7 +187,7 @@ GET /query/user?user_id=test_user_001&limit=10
 GET /query/marketing?marketing_id=campaign_2024&limit=20
 
 # 查詢失敗記錄
-GET /query/failures?transaction_id=tx_002
+GET /query/fail?transaction_id=tx_002
 ```
 
 ## 🧪 測試

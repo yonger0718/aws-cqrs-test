@@ -22,7 +22,7 @@ echo -e "${GRAY}=============================${NC}\n"
 
 # 檢查 LocalStack 是否運行
 echo -e "${YELLOW}1. 檢查 LocalStack 狀態...${NC}"
-HEALTH_RESPONSE=$(curl -s "$AWS_ENDPOINT/health")
+HEALTH_RESPONSE=$(curl -s "$AWS_ENDPOINT/_localstack/health")
 if [ $? -ne 0 ]; then
     echo -e "${RED}❌ LocalStack 未運行或無法連接${NC}"
     echo -e "${YELLOW}請確保 LocalStack 容器正在運行${NC}"

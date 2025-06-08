@@ -18,10 +18,20 @@
 
 ### 🏗️ [architecture/](./architecture/) - 架構文檔
 
+- **[cqrs-hexagonal-design.md](./architecture/cqrs-hexagonal-design.md)** - CQRS + 六邊形設計詳解
+- **[ecs-migration-guide.md](./architecture/ecs-migration-guide.md)** - ECS Fargate 遷移指南 ⭐ **新增**
 - **[CQRS_SUCCESS.md](./architecture/CQRS_SUCCESS.md)** - CQRS 架構成功實作
-- **[query_service_requirements_v2.md](./architecture/query_service_requirements_v2.md)**
-  - 查詢服務需求 v2
+- **[query_service_requirements_v2.md](./architecture/query_service_requirements_v2.md)** - 查詢服務需求 v2
 - **[query_service_requirements.md](./architecture/query_service_requirements.md)** - 查詢服務原始需求
+
+### 🚀 [deployment/](./deployment/) - 部署文檔
+
+- **[gui-deployment.md](./deployment/gui-deployment.md)** - GUI 部署指南 ⭐ **推薦新手**
+- **[ecs-deployment.md](./deployment/ecs-deployment.md)** - 命令列部署指南 ⭐ **進階用戶**
+
+### 📡 [api/](./api/) - API 文檔
+
+- **[api-changes-v3.md](./api/api-changes-v3.md)** - V3 版本 API 變更說明 ⭐ **新增**
 
 ### 📊 [project/](./project/) - 專案總結
 
@@ -31,10 +41,13 @@
 ## 🚀 快速開始
 
 1. **新手入門**: 從 [FINAL_USAGE_GUIDE.md](./guides/FINAL_USAGE_GUIDE.md) 開始
-2. **測試驗證**: 參考 [VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md) ⭐ **推薦順序**
-3. **快速測試**: 使用 [QUICK_TEST_GUIDE.md](./testing/QUICK_TEST_GUIDE.md)
-4. **架構理解**: 閱讀 [CQRS_SUCCESS.md](./architecture/CQRS_SUCCESS.md)
-5. **專案回顧**: 查看 [PROJECT_SUMMARY.md](./project/PROJECT_SUMMARY.md)
+2. **架構理解**: 閱讀 [ecs-migration-guide.md](./architecture/ecs-migration-guide.md) ⭐ **最新架構**
+3. **部署指南**:
+   - **圖形介面**: [gui-deployment.md](./deployment/gui-deployment.md) ⭐ **推薦新手**
+   - **命令列**: [ecs-deployment.md](./deployment/ecs-deployment.md) ⭐ **進階用戶**
+4. **API 變更**: 查看 [api-changes-v3.md](./api/api-changes-v3.md) ⭐ **重要更新**
+5. **測試驗證**: 參考 [VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md)
+6. **專案回顧**: 查看 [PROJECT_SUMMARY.md](./project/PROJECT_SUMMARY.md)
 
 ## 📝 文檔維護
 

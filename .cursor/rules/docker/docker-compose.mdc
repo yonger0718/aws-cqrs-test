@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+- Use docker compose instead of docker-compose.

@@ -49,4 +49,4 @@ alwaysApply: false
 - Validate all inputs.
 - Use environment variables for sensitive configuration.
 - Always use classes instead of function.
-- Always run test cases after modifying codes. If error appears, fix it.
+- Always run test cases with pytest after modifying codes. If error appears, fix it.

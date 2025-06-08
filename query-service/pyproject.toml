@@ -18,3 +18,4 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+asyncio_mode = "auto"

@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+- Always use ap-southeast-1 as default region if needed.

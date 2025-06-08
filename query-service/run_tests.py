@@ -1,80 +1,159 @@
 #!/usr/bin/env python3
 """
-運行改進版 Lambda 函數測試的腳本
+運行 ECS 架構下的查詢服務測試腳本
+適用於 CQRS 模式的 ECS Fargate 部署
 """
 
-import importlib.util
-import os
+import subprocess
 import sys
-from pathlib import Path
+import time
+from typing import Any, Dict, List, Optional
 
 
-def run_test_file(test_file_path: str) -> bool:
-    """運行單個測試文件"""
+def run_command(cmd: List[str], cwd: Optional[str] = None) -> Dict[str, Any]:
+    """執行命令並返回結果"""
     try:
-        # 添加測試目錄到 Python 路徑
-        test_dir = Path(test_file_path).parent
-        sys.path.insert(0, str(test_dir))
-
-        # 動態導入測試模組
-        spec = importlib.util.spec_from_file_location("test_module", test_file_path)
-        if spec is None:
-            print(f"❌ 無法載入測試模組 {test_file_path}")
-            return False
-
-        test_module = importlib.util.module_from_spec(spec)
-        if spec.loader is None:
-            print(f"❌ 無法載入測試模組 {test_file_path}")
-            return False
-
-        spec.loader.exec_module(test_module)
-
-        # 查找並運行測試類
-        import unittest
-
-        loader = unittest.TestLoader()
-        suite = loader.loadTestsFromModule(test_module)
-        runner = unittest.TextTestRunner(verbosity=2)
-        result = runner.run(suite)
-
-        return result.wasSuccessful()
-
+        result = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, timeout=120)
+        return {
+            "success": result.returncode == 0,
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "returncode": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        return {"success": False, "stdout": "", "stderr": "Command timeout", "returncode": -1}
     except Exception as e:
-        print(f"運行測試文件 {test_file_path} 時發生錯誤: {e}")
+        return {"success": False, "stdout": "", "stderr": str(e), "returncode": -1}
+
+
+def check_docker_services() -> bool:
+    """檢查 Docker 服務是否正常運行"""
+    print("🔍 檢查 Docker 服務狀態...")
+
+    # 檢查 docker-compose 服務
+    result = run_command(["docker-compose", "ps"], cwd="query-service")
+    if not result["success"]:
+        print("❌ Docker Compose 檢查失敗:", result["stderr"])
+        return False
+
+    print("✅ Docker 服務檢查完成")
+    return True
+
+
+def run_unit_tests() -> bool:
+    """運行單元測試"""
+    print("🧪 運行單元測試...")
+
+    test_commands = [
+        ["python", "-m", "pytest", "tests/test_eks_handler.py", "-v"],
+        ["python", "-m", "pytest", "tests/test_integration.py", "-v"],
+    ]
+
+    all_passed = True
+    for cmd in test_commands:
+        print("執行:", " ".join(cmd))
+        result = run_command(cmd, cwd="query-service")
+
+        if result["success"]:
+            print("✅ 測試通過")
+        else:
+            print("❌ 測試失敗:")
+            print("  stdout:", result["stdout"])
+            print("  stderr:", result["stderr"])
+            all_passed = False
+
+    return all_passed
+
+
+def test_ecs_handler_endpoints() -> bool:
+    """測試 ECS Handler 端點"""
+    print("🌐 測試 ECS Handler API 端點...")
+
+    # 等待服務啟動
+    print("等待 ECS Handler 服務啟動...")
+    time.sleep(5)
+
+    # 測試健康檢查端點
+    result = run_command(["curl", "-f", "http://localhost:8000/health"])
+    if not result["success"]:
+        print("❌ ECS Handler 健康檢查失敗")
+        return False
+
+    print("✅ ECS Handler 健康檢查通過")
+
+    # 測試用戶查詢端點
+    test_endpoints = [
+        ("用戶查詢", "http://localhost:8000/query/user?user_id=test_user_001"),
+        ("失敗查詢", "http://localhost:8000/query/fail?transaction_id=tx_002"),
+    ]
+
+    for name, url in test_endpoints:
+        print(f"測試 {name}...")
+        result = run_command(["curl", "-f", "-s", url])
+        if result["success"]:
+            print(f"✅ {name} 測試通過")
+        else:
+            print(f"❌ {name} 測試失敗: {result['stderr']}")
+            return False
+
+    return True
+
+
+def run_pre_commit_checks() -> bool:
+    """運行 pre-commit 檢查"""
+    print("🔧 運行 pre-commit 檢查...")
+
+    result = run_command(["pre-commit", "run", "--all-files"], cwd="query-service")
+    if result["success"]:
+        print("✅ Pre-commit 檢查通過")
+        return True
+    else:
+        print("❌ Pre-commit 檢查失敗:")
+        print("  stdout:", result["stdout"])
+        print("  stderr:", result["stderr"])
         return False
 
 
 def main() -> int:
     """主函數"""
-    test_files = [
-        "tests/test_lambdas/test_query_result_lambda_improved.py",
-        "tests/test_lambdas/test_query_lambda_improved.py",
-        "tests/test_lambdas/test_stream_processor_lambda_improved.py",
-    ]
+    print("🚀 開始運行 ECS 架構測試套件...\n")
 
-    print("🚀 開始運行改進版 Lambda 函數測試...\n")
+    test_results = {
+        "docker_services": False,
+        "unit_tests": False,
+        "api_endpoints": False,
+        "pre_commit": False,
+    }
 
-    all_passed = True
+    # 1. 檢查 Docker 服務
+    test_results["docker_services"] = check_docker_services()
 
-    for test_file in test_files:
-        print(f"📋 運行 {test_file}...")
+    # 2. 運行單元測試
+    if test_results["docker_services"]:
+        test_results["unit_tests"] = run_unit_tests()
 
-        if os.path.exists(test_file):
-            success = run_test_file(test_file)
-            if success:
-                print(f"✅ {test_file} 測試通過\n")
-            else:
-                print(f"❌ {test_file} 測試失敗\n")
-                all_passed = False
-        else:
-            print(f"⚠️ 測試文件 {test_file} 不存在\n")
-            all_passed = False
+    # 3. 測試 API 端點
+    if test_results["unit_tests"]:
+        test_results["api_endpoints"] = test_ecs_handler_endpoints()
+
+    # 4. 運行 pre-commit 檢查
+    test_results["pre_commit"] = run_pre_commit_checks()
+
+    # 輸出測試結果
+    print("\n📊 測試結果總結:")
+    print("=" * 50)
+
+    for test_name, passed in test_results.items():
+        status = "✅ 通過" if passed else "❌ 失敗"
+        print(f"{test_name:15}: {status}")
+
+    all_passed = all(test_results.values())
 
     if all_passed:
-        print("🎉 所有測試都通過了！")
+        print("\n🎉 所有測試都通過了！ECS 架構運行正常。")
         return 0
     else:
-        print("💥 部分測試失敗，請檢查上面的錯誤訊息")
+        print("\n💥 部分測試失敗，請檢查上面的錯誤訊息。")
         return 1
 
 

@@ -1,0 +1,266 @@
+{
+  "openapi": "3.0.1",
+  "info": {
+    "title": "Query Service Internal API",
+    "description": "Internal API Gateway for Query Service CQRS Architecture",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "https://internal-api.query-service.local",
+      "description": "Internal API Gateway"
+    }
+  ],
+  "paths": {
+    "/query/user": {
+      "post": {
+        "summary": "Query user notifications",
+        "operationId": "queryUserNotifications",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "httpMethod": "POST",
+          "uri": "http://query-service.internal:8000/query/user",
+          "connectionType": "VPC_LINK",
+          "connectionId": "${vpc_link_id}",
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    },
+    "/query/marketing": {
+      "post": {
+        "summary": "Query marketing notifications",
+        "operationId": "queryMarketingNotifications",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarketingQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "httpMethod": "POST",
+          "uri": "http://query-service.internal:8000/query/marketing",
+          "connectionType": "VPC_LINK",
+          "connectionId": "${vpc_link_id}",
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    },
+    "/query/fail": {
+      "post": {
+        "summary": "Query failed notifications",
+        "operationId": "queryFailedNotifications",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FailQueryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResult"
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "httpMethod": "POST",
+          "uri": "http://query-service.internal:8000/query/fail",
+          "connectionType": "VPC_LINK",
+          "connectionId": "${vpc_link_id}",
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "operationId": "healthCheck",
+        "responses": {
+          "200": {
+            "description": "Service is healthy",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string"
+                    },
+                    "timestamp": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-amazon-apigateway-integration": {
+          "type": "http_proxy",
+          "httpMethod": "GET",
+          "uri": "http://query-service.internal:8000/health",
+          "connectionType": "VPC_LINK",
+          "connectionId": "${vpc_link_id}",
+          "passthroughBehavior": "when_no_match"
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "UserQueryRequest": {
+        "type": "object",
+        "required": ["user_id"],
+        "properties": {
+          "user_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "用戶ID"
+          }
+        }
+      },
+      "MarketingQueryRequest": {
+        "type": "object",
+        "required": ["marketing_id"],
+        "properties": {
+          "marketing_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "行銷活動ID"
+          }
+        }
+      },
+      "FailQueryRequest": {
+        "type": "object",
+        "required": ["transaction_id"],
+        "properties": {
+          "transaction_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "交易ID"
+          }
+        }
+      },
+      "NotificationRecord": {
+        "type": "object",
+        "properties": {
+          "user_id": {
+            "type": "string"
+          },
+          "transaction_id": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "integer"
+          },
+          "marketing_id": {
+            "type": "string"
+          },
+          "notification_title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SENT", "DELIVERED", "FAILED"]
+          },
+          "platform": {
+            "type": "string",
+            "enum": ["IOS", "ANDROID", "WEBPUSH"]
+          },
+          "error_msg": {
+            "type": "string"
+          },
+          "ap_id": {
+            "type": "string",
+            "description": "服務的來源 AP ID"
+          }
+        }
+      },
+      "QueryResult": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/NotificationRecord"
+            }
+          },
+          "message": {
+            "type": "string"
+          },
+          "total_count": {
+            "type": "integer"
+          }
+        }
+      }
+    }
+  },
+  "x-amazon-apigateway-policy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": "*",
+        "Action": "execute-api:Invoke",
+        "Resource": "arn:aws:execute-api:ap-southeast-1:ACCOUNT_ID:*/*/query/*",
+        "Condition": {
+          "StringEquals": {
+            "aws:sourceVpc": "vpc-XXXXXXXXX"
+          }
+        }
+      }
+    ]
+  }
+}

@@ -5,10 +5,7 @@ from typing import Any, Dict
 import requests
 from aws_lambda_powertools import Logger, Tracer
 from aws_lambda_powertools.event_handler.api_gateway import APIGatewayHttpResolver
-from aws_lambda_powertools.event_handler.exceptions import (
-    BadRequestError,
-    ServiceError,
-)
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError, ServiceError
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
 

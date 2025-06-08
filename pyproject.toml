@@ -4,7 +4,7 @@ version = "2.0.0"
 description = "AWS CQRS + Hexagonal Architecture Notification System"
 authors = ["Yonger0718 <tedg319@gmail.com>"]
 readme = "README.md"
-packages = [{include = "query_service", from = "query-service"}]
+packages = [{include = "eks_handler", from = "query-service"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -15,6 +15,9 @@ uvicorn = "^0.24.0"
 pydantic = "^2.4.2"
 aws-lambda-powertools = "^3.13.0"
 aws-xray-sdk = "^2.14.0"
+awscli-local = {extras = ["ver1"], version = "^0.22.0"}
+rich = "^14.0.0"
+click = "^8.2.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"

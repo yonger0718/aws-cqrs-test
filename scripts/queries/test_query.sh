@@ -23,7 +23,7 @@ echo -e "${GRAY}===================${NC}\n"
 
 # 測試 LocalStack 健康狀況
 echo -e "${YELLOW}1. 測試 LocalStack 健康狀況...${NC}"
-HEALTH_RESPONSE=$(curl -s "$AWS_ENDPOINT/health")
+HEALTH_RESPONSE=$(curl -s "$AWS_ENDPOINT/_localstack/health")
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✅ LocalStack 正常運行${NC}"
     echo "$HEALTH_RESPONSE" | jq .
@@ -33,17 +33,34 @@ fi
 
 # 獲取 API Gateway ID
 echo -e "\n${YELLOW}2. 獲取 API Gateway ID...${NC}"
-API_ID=$(aws --endpoint-url=$AWS_ENDPOINT --region $AWS_REGION apigateway get-rest-apis --query 'items[0].id' --output text)
-if [ -z "$API_ID" ]; then
-    echo -e "${RED}❌ 無法獲取 API Gateway ID${NC}"
-    echo -e "${YELLOW}嘗試使用其他方法獲取 API Gateway ID...${NC}"
 
-    # 嘗試列出所有 API 並選擇第一個
-    API_LIST=$(aws --endpoint-url=$AWS_ENDPOINT --region $AWS_REGION apigateway get-rest-apis)
-    if [ $? -eq 0 ]; then
+# 獲取腳本目錄
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# 使用 Python 輔助工具替代 AWS CLI
+API_ID=$(cd "$PROJECT_ROOT" && poetry run python "$SCRIPT_DIR/api_gateway_helper.py" --action first-id --endpoint "$AWS_ENDPOINT" --region "$AWS_REGION" 2>/dev/null)
+
+if [ ! -z "$API_ID" ] && [ "$API_ID" != "" ]; then
+    echo -e "${GREEN}✅ 找到 API Gateway ID: $API_ID${NC}"
+else
+    echo -e "${YELLOW}嘗試列出所有 API Gateway...${NC}"
+
+    # 列出所有 API
+    API_LIST=$(cd "$PROJECT_ROOT" && poetry run python "$SCRIPT_DIR/api_gateway_helper.py" --action list --endpoint "$AWS_ENDPOINT" --region "$AWS_REGION" --output json 2>/dev/null)
+
+    if [ $? -eq 0 ] && [ ! -z "$API_LIST" ]; then
         echo "$API_LIST" | jq .
-        echo -e "${YELLOW}請從上面的列表中找到 'Query Service API' 並手動輸入其 ID:${NC}"
-        read API_ID
+
+        # 嘗試尋找包含 'query' 的 API
+        API_ID=$(cd "$PROJECT_ROOT" && poetry run python "$SCRIPT_DIR/api_gateway_helper.py" --action find-by-name --name "query" --endpoint "$AWS_ENDPOINT" --region "$AWS_REGION" 2>/dev/null)
+
+        if [ ! -z "$API_ID" ] && [ "$API_ID" != "" ]; then
+            echo -e "${GREEN}✅ 找到 Query Service API ID: $API_ID${NC}"
+        else
+            echo -e "${YELLOW}未找到 Query Service API，請手動輸入 API ID (或按 Enter 跳過):${NC}"
+            read API_ID
+        fi
     else
         echo -e "${RED}❌ 無法列出 API Gateway${NC}"
         echo -e "${YELLOW}直接測試 EKS Handler...${NC}"

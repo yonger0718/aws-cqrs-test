@@ -12,10 +12,10 @@ httpx==0.25.2
 requests==2.32.3
 
 # AWS SDK (用於整合測試)
-boto3==1.26.137
+boto3==1.38.32
 moto==4.2.14  # AWS 服務模擬
-aws-lambda-powertools==3.13.0  # Lambda 開發工具 (updated to match Lambda requirements)
-aws-xray-sdk==2.12.0  # X-Ray tracing support
+aws-lambda-powertools==3.14.0  # Lambda 開發工具 (updated to match Lambda requirements)
+aws-xray-sdk==2.14.0  # X-Ray tracing support
 
 # FastAPI 測試支援
 fastapi==0.104.1

@@ -96,7 +96,8 @@ awslocal dynamodb put-item \
         "status": {"S": "DELIVERED"},
         "platform": {"S": "IOS"},
         "device_token": {"S": "ios_token_123"},
-        "payload": {"S": "{\"title\": \"新年快樂！\", \"body\": \"祝您新年快樂，萬事如意！\"}"}
+        "payload": {"S": "{\"title\": \"新年快樂！\", \"body\": \"祝您新年快樂，萬事如意！\"}"},
+        "ap_id": {"S": "mobile-app-001"}
     }'
 
 # 測試資料 2: 失敗的推播
@@ -112,7 +113,8 @@ awslocal dynamodb put-item \
         "platform": {"S": "ANDROID"},
         "device_token": {"S": "android_token_456"},
         "error_msg": {"S": "Device token invalid"},
-        "payload": {"S": "{\"title\": \"新年優惠\", \"body\": \"限時優惠活動開始！\"}"}
+        "payload": {"S": "{\"title\": \"新年優惠\", \"body\": \"限時優惠活動開始！\"}"},
+        "ap_id": {"S": "mobile-app-002"}
     }'
 
 # 測試資料 3: 最近的推播
@@ -127,7 +129,8 @@ awslocal dynamodb put-item \
         "status": {"S": "SENT"},
         "platform": {"S": "WEBPUSH"},
         "device_token": {"S": "web_token_789"},
-        "payload": {"S": "{\"title\": \"春季促銷\", \"body\": \"春季大促銷活動現在開始！\"}"}
+        "payload": {"S": "{\"title\": \"春季促銷\", \"body\": \"春季大促銷活動現在開始！\"}"},
+        "ap_id": {"S": "web-portal-001"}
     }'
 
 # 測試資料 4: 另一個失敗案例
@@ -143,7 +146,8 @@ awslocal dynamodb put-item \
         "platform": {"S": "IOS"},
         "device_token": {"S": "ios_token_999"},
         "error_msg": {"S": "Network timeout"},
-        "payload": {"S": "{\"title\": \"限時優惠\", \"body\": \"最後機會，不要錯過！\"}"}
+        "payload": {"S": "{\"title\": \"限時優惠\", \"body\": \"最後機會，不要錯過！\"}"},
+        "ap_id": {"S": "mobile-app-003"}
     }'
 
 echo "Test data inserted to command table successfully."
@@ -156,7 +160,7 @@ echo "Building and deploying Lambda functions..."
 
 # 創建環境變數文件
 echo '{"Variables":{"LOCALSTACK_HOSTNAME":"localstack"}}' > /tmp/env.json
-echo '{"Variables":{"LOCALSTACK_HOSTNAME":"localstack","EKS_HANDLER_URL":"http://eks-handler:8000"}}' > /tmp/query_env.json
+echo '{"Variables":{"LOCALSTACK_HOSTNAME":"localstack","ECS_HANDLER_URL":"http://ecs-handler:8000"}}' > /tmp/query_env.json
 
 cd /opt/code/lambdas
 
