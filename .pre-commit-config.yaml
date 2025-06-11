@@ -29,7 +29,7 @@ repos:
 
   # 類型檢查
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+    rev: v1.16.0
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, types-boto3]
@@ -64,7 +64,7 @@ repos:
       - id: markdownlint
         args: [--disable, MD013, MD033, MD040, MD031, MD024, MD029, MD036, MD034]
 
-  # Dockerfile 檢查
+  # Dockerfile 檢查 - 使用穩定版本
   - repo: https://github.com/hadolint/hadolint
     rev: v2.12.0
     hooks:

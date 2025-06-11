@@ -63,8 +63,9 @@
 
 - ✅ 服務連接性檢查
 - ✅ DynamoDB 表數據統計
-- ✅ 用戶查詢 API 測試
-- ✅ 行銷活動查詢測試
+- ✅ 交易查詢 API 測試 (GET /tx)
+- ✅ 失敗查詢 API 測試 (GET /fail)
+- ✅ V4 端點功能驗證
 - ✅ 錯誤處理驗證
 
 ### **步驟 5: CQRS 完整流程驗證**
@@ -100,8 +101,9 @@ pytest tests/ --cov=. --cov-report=html
 
 **測試範圍：**
 
-- ✅ 所有 API 端點功能
+- ✅ V4 API 端點功能 (/tx, /fail)
 - ✅ DynamoDB 整合測試
+- ✅ Internal API Gateway 通信測試
 - ✅ 錯誤處理和邊界條件
 - ✅ 效能和一致性驗證
 

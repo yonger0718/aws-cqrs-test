@@ -1,4 +1,6 @@
-# CQRS + 六邊形架構設計文檔
+# CQRS + 六邊形架構設計文檔 (舊版)
+
+> **⚠️ 注意**: 此文檔為舊版架構設計，最新的 V4 架構請參考 [cqrs-hexagonal-design-v4.md](./cqrs-hexagonal-design-v4.md)
 
 ## 概述
 

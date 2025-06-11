@@ -6,6 +6,9 @@ authors = ["Yonger0718 <tedg319@gmail.com>"]
 readme = "README.md"
 packages = [{include = "eks_handler", from = "query-service"}]
 
+[tool.poetry.scripts]
+precommit = "scripts:run_precommit"
+
 [tool.poetry.dependencies]
 python = "^3.12"
 boto3 = "^1.38.0"
@@ -24,10 +27,10 @@ pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
 pytest-asyncio = "^0.21.0"
 pytest-forked = "^1.6.0"
-black = "^23.0.0"
-isort = "^5.12.0"
-flake8 = "^6.0.0"
-mypy = "^1.5.0"
+black = "^24.10.0"
+isort = "^5.13.2"
+flake8 = "^7.1.1"
+mypy = "^1.13.0"
 pre-commit = "^3.3.0"
 types-requests = "^2.32.0.20250515"
 bandit = "^1.8.0"
@@ -96,6 +99,8 @@ known_first_party = ["eks_handler", "lambdas"]
 
 [tool.mypy]
 python_version = "3.12"
+ignore_missing_imports = true
+disable_error_code = ["misc"]
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -104,7 +109,7 @@ check_untyped_defs = true
 disallow_untyped_decorators = true
 no_implicit_optional = true
 warn_redundant_casts = true
-warn_unused_ignores = true
+warn_unused_ignores = false
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true

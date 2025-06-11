@@ -3,7 +3,7 @@
 # 載入環境變量設置
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-source "$PROJECT_ROOT/scripts/setup_env.sh"
+source "$PROJECT_ROOT/scripts/development/setup_env.sh"
 
 # ANSI 顏色定義
 GREEN='\033[0;32m'

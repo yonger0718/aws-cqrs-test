@@ -4,7 +4,6 @@ Query Result Lambda 測試
 測試使用 aws-lambda-powertools 的 query_result_lambda
 """
 
-import json
 import os
 import sys
 import unittest
@@ -64,116 +63,6 @@ class TestQueryResultLambda(unittest.TestCase):
         self.lambda_context = create_mock_lambda_context()
 
     @mock_dynamodb
-    def test_api_gateway_user_query(self) -> None:
-        """測試 API Gateway 用戶查詢路徑 - 通過服務類測試"""
-        # 創建測試表
-        import boto3
-
-        with mock_dynamodb():
-            dynamodb = boto3.resource("dynamodb", region_name="ap-southeast-1")
-            table = dynamodb.create_table(
-                TableName="test-notification-records",
-                KeySchema=[
-                    {"AttributeName": "user_id", "KeyType": "HASH"},
-                    {"AttributeName": "created_at", "KeyType": "RANGE"},
-                ],
-                AttributeDefinitions=[
-                    {"AttributeName": "user_id", "AttributeType": "S"},
-                    {"AttributeName": "created_at", "AttributeType": "N"},
-                ],
-                BillingMode="PAY_PER_REQUEST",
-            )
-
-            # 插入測試數據
-            table.put_item(
-                Item={
-                    "user_id": "test_user_123",
-                    "created_at": 1704038400000,
-                    "transaction_id": "tx_001",
-                    "marketing_id": "campaign_2024",
-                    "notification_title": "測試推播",
-                    "status": "DELIVERED",
-                    "platform": "IOS",
-                }
-            )
-
-            # 直接測試服務類而不是複雜的 API Gateway 事件解析
-            with patch.object(app, "get_dynamodb_resource", return_value=dynamodb):
-                service = app.QueryService("test-notification-records")
-                result = service.query_user_notifications("test_user_123")
-                formatted_items = app.format_notification_items(result["items"])
-
-                # 驗證結果
-                self.assertTrue(result["success"])
-                self.assertEqual(len(formatted_items), 1)
-                self.assertEqual(formatted_items[0]["user_id"], "test_user_123")
-
-    @patch.object(app, "query_service")
-    def test_direct_invocation_user_query(self, mock_service: MagicMock) -> None:
-        """測試直接調用用戶查詢"""
-        mock_service.query_user_notifications.return_value = {
-            "success": True,
-            "items": [
-                {
-                    "user_id": "test_user_123",
-                    "created_at": 1704038400000,
-                    "transaction_id": "tx_001",
-                    "notification_title": "測試推播",
-                    "status": "DELIVERED",
-                    "platform": "IOS",
-                }
-            ],
-        }
-
-        # 直接調用事件
-        event = {"query_type": "user", "user_id": "test_user_123"}
-
-        response = app.lambda_handler(event, self.lambda_context)
-
-        # 驗證結果
-        self.assertEqual(response["statusCode"], 200)
-        body = json.loads(response["body"])
-        self.assertTrue(body["success"])
-        self.assertEqual(body["count"], 1)
-
-    def test_query_service_user_notifications(self) -> None:
-        """測試 QueryService 用戶查詢方法"""
-        with mock_dynamodb():
-            import boto3
-
-            dynamodb = boto3.resource("dynamodb", region_name="ap-southeast-1")
-            table = dynamodb.create_table(
-                TableName="test-notification-records",
-                KeySchema=[
-                    {"AttributeName": "user_id", "KeyType": "HASH"},
-                    {"AttributeName": "created_at", "KeyType": "RANGE"},
-                ],
-                AttributeDefinitions=[
-                    {"AttributeName": "user_id", "AttributeType": "S"},
-                    {"AttributeName": "created_at", "AttributeType": "N"},
-                ],
-                BillingMode="PAY_PER_REQUEST",
-            )
-
-            # 插入測試數據
-            table.put_item(
-                Item={
-                    "user_id": "test_user_123",
-                    "created_at": 1704038400000,
-                    "transaction_id": "tx_001",
-                    "notification_title": "測試推播",
-                    "status": "DELIVERED",
-                    "platform": "IOS",
-                }
-            )
-
-            with patch.object(app, "get_dynamodb_resource", return_value=dynamodb):
-                service = app.QueryService("test-notification-records")
-                result = service.query_user_notifications("test_user_123")
-
-                self.assertTrue(result["success"])
-                self.assertEqual(len(result["items"]), 1)
-
     def test_format_notification_items(self) -> None:
         """測試推播記錄格式化功能"""
         items = [
@@ -185,7 +74,6 @@ class TestQueryResultLambda(unittest.TestCase):
                 "notification_title": "測試推播",
                 "status": "DELIVERED",
                 "platform": "IOS",
-                "error_msg": "測試錯誤",
             }
         ]
 
@@ -193,14 +81,14 @@ class TestQueryResultLambda(unittest.TestCase):
 
         self.assertEqual(len(formatted), 1)
         item = formatted[0]
-        self.assertEqual(item["user_id"], "test_user")
+        self.assertEqual(item["transaction_id"], "tx_001")
         self.assertEqual(item["created_at"], 1704038400000)
-        self.assertEqual(item["error_msg"], "測試錯誤")
+        self.assertEqual(item["notification_title"], "測試推播")
 
     def test_missing_parameters(self) -> None:
         """測試缺少必要參數的情況"""
         # 測試缺少 user_id
-        event = {"query_type": "user"}  # 缺少 user_id
+        event = {"query_type": "transaction"}  # 缺少 transaction_id
 
         response = app.lambda_handler(event, self.lambda_context)
         self.assertEqual(response["statusCode"], 400)
@@ -218,7 +106,7 @@ class TestQueryResultLambda(unittest.TestCase):
         """測試日誌記錄功能"""
         mock_service.query_user_notifications.return_value = {"success": True, "items": []}
 
-        event = {"query_type": "user", "user_id": "test_user"}
+        event = {"query_type": "transaction", "user_id": "test_user"}
 
         app.lambda_handler(event, self.lambda_context)
 
@@ -228,9 +116,10 @@ class TestQueryResultLambda(unittest.TestCase):
     @patch.object(app, "query_service")
     def test_exception_handling(self, mock_service: MagicMock) -> None:
         """測試異常處理"""
-        mock_service.query_user_notifications.side_effect = Exception("Database error")
+        mock_service.query_transaction_notifications.side_effect = Exception("Database error")
 
-        event = {"query_type": "user", "user_id": "test_user"}
+        # 使用有效的查詢類型 "tx"，但會觸發異常
+        event = {"query_type": "tx", "transaction_id": "test_user"}
 
         response = app.lambda_handler(event, self.lambda_context)
         self.assertEqual(response["statusCode"], 500)
@@ -304,43 +193,6 @@ class TestQueryServiceMethods(unittest.TestCase):
                 "error_msg": "Device token invalid",
             }
         )
-
-    def test_query_marketing_notifications(self) -> None:
-        """測試行銷活動查詢"""
-        # Mock the service method directly to avoid DynamoDB authentication issues
-        with patch.object(app, "get_dynamodb_resource", return_value=self.dynamodb):
-            with patch.object(app.QueryService, "query_marketing_notifications") as mock_method:
-                mock_method.return_value = {
-                    "success": True,
-                    "items": [
-                        {
-                            "user_id": "user123",
-                            "created_at": 1704038400000,
-                            "transaction_id": "tx001",
-                            "marketing_id": "campaign2024",
-                            "notification_title": "新年促銷",
-                            "status": "DELIVERED",
-                            "platform": "IOS",
-                        },
-                        {
-                            "user_id": "user456",
-                            "created_at": 1704038500000,
-                            "transaction_id": "tx002",
-                            "marketing_id": "campaign2024",
-                            "notification_title": "限時優惠",
-                            "status": "FAILED",
-                            "platform": "ANDROID",
-                            "error_msg": "Device token invalid",
-                        },
-                    ],
-                }
-
-                service = app.QueryService("test-notification-records")
-                result = service.query_marketing_notifications("campaign2024")
-
-                self.assertTrue(result["success"])
-                self.assertEqual(len(result["items"]), 2)
-                mock_method.assert_called_once_with("campaign2024")
 
     def test_query_failed_notifications(self) -> None:
         """測試失敗通知查詢"""

@@ -1,266 +1,301 @@
 {
   "openapi": "3.0.1",
   "info": {
-    "title": "Query Service Internal API",
-    "description": "Internal API Gateway for Query Service CQRS Architecture",
-    "version": "1.0.0"
+    "title": "Internal Query API",
+    "description": "Internal API for query notification records",
+    "version": "4.0.0",
+    "contact": {
+      "name": "Query Service Team",
+      "email": "query-service@example.com"
+    }
   },
   "servers": [
     {
-      "url": "https://internal-api.query-service.local",
-      "description": "Internal API Gateway"
+      "url": "https://api.example.com/v4",
+      "description": "Production server"
+    },
+    {
+      "url": "https://dev-api.example.com/v4",
+      "description": "Development server"
     }
   ],
   "paths": {
-    "/query/user": {
-      "post": {
-        "summary": "Query user notifications",
-        "operationId": "queryUserNotifications",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserQueryRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QueryResult"
-                }
-              }
-            }
-          }
-        },
-        "x-amazon-apigateway-integration": {
-          "type": "http_proxy",
-          "httpMethod": "POST",
-          "uri": "http://query-service.internal:8000/query/user",
-          "connectionType": "VPC_LINK",
-          "connectionId": "${vpc_link_id}",
-          "passthroughBehavior": "when_no_match"
-        }
-      }
-    },
-    "/query/marketing": {
-      "post": {
-        "summary": "Query marketing notifications",
-        "operationId": "queryMarketingNotifications",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/MarketingQueryRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QueryResult"
-                }
-              }
-            }
-          }
-        },
-        "x-amazon-apigateway-integration": {
-          "type": "http_proxy",
-          "httpMethod": "POST",
-          "uri": "http://query-service.internal:8000/query/marketing",
-          "connectionType": "VPC_LINK",
-          "connectionId": "${vpc_link_id}",
-          "passthroughBehavior": "when_no_match"
-        }
-      }
-    },
-    "/query/fail": {
-      "post": {
-        "summary": "Query failed notifications",
-        "operationId": "queryFailedNotifications",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FailQueryRequest"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/QueryResult"
-                }
-              }
-            }
-          }
-        },
-        "x-amazon-apigateway-integration": {
-          "type": "http_proxy",
-          "httpMethod": "POST",
-          "uri": "http://query-service.internal:8000/query/fail",
-          "connectionType": "VPC_LINK",
-          "connectionId": "${vpc_link_id}",
-          "passthroughBehavior": "when_no_match"
-        }
-      }
-    },
-    "/health": {
+    "/tx": {
       "get": {
-        "summary": "Health check",
-        "operationId": "healthCheck",
+        "summary": "Query transaction notifications",
+        "description": "Get notification records by transaction_id",
+        "operationId": "queryTransactionNotifications",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "txn-12345"
+            },
+            "description": "Transaction identifier"
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Service is healthy",
+            "description": "Transaction notifications retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "status": {
-                      "type": "string"
-                    },
-                    "timestamp": {
-                      "type": "string"
-                    }
-                  }
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
           }
         },
+        "tags": ["Transaction Query"],
         "x-amazon-apigateway-integration": {
-          "type": "http_proxy",
-          "httpMethod": "GET",
-          "uri": "http://query-service.internal:8000/health",
-          "connectionType": "VPC_LINK",
-          "connectionId": "${vpc_link_id}",
-          "passthroughBehavior": "when_no_match"
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:ap-southeast-1:lambda:path/2015-03-31/functions/arn:aws:lambda:ap-southeast-1:123456789012:function:query-result-lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "contentHandling": "CONVERT_TO_TEXT"
+        }
+      }
+    },
+    "/fail": {
+      "get": {
+        "summary": "Query failed notifications",
+        "description": "Get failed notification records by transaction_id",
+        "operationId": "queryFailedNotifications",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "example": "txn-67890"
+            },
+            "description": "Transaction identifier"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Failed notifications retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueryResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request - invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Failed Query"],
+        "x-amazon-apigateway-integration": {
+          "type": "aws_proxy",
+          "httpMethod": "POST",
+          "uri": "arn:aws:apigateway:ap-southeast-1:lambda:path/2015-03-31/functions/arn:aws:lambda:ap-southeast-1:123456789012:function:query-result-lambda/invocations",
+          "passthroughBehavior": "when_no_match",
+          "contentHandling": "CONVERT_TO_TEXT"
         }
       }
     }
   },
   "components": {
     "schemas": {
-      "UserQueryRequest": {
-        "type": "object",
-        "required": ["user_id"],
-        "properties": {
-          "user_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "用戶ID"
-          }
-        }
-      },
-      "MarketingQueryRequest": {
-        "type": "object",
-        "required": ["marketing_id"],
-        "properties": {
-          "marketing_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "行銷活動ID"
-          }
-        }
-      },
-      "FailQueryRequest": {
-        "type": "object",
-        "required": ["transaction_id"],
-        "properties": {
-          "transaction_id": {
-            "type": "string",
-            "minLength": 1,
-            "description": "交易ID"
-          }
-        }
-      },
       "NotificationRecord": {
         "type": "object",
+        "required": [
+          "transaction_id",
+          "token",
+          "platform",
+          "notification_title",
+          "notification_body",
+          "status",
+          "send_ts",
+          "ap_id",
+          "created_at"
+        ],
         "properties": {
-          "user_id": {
-            "type": "string"
-          },
           "transaction_id": {
-            "type": "string"
-          },
-          "created_at": {
-            "type": "integer"
-          },
-          "marketing_id": {
-            "type": "string"
-          },
-          "notification_title": {
-            "type": "string"
-          },
-          "status": {
             "type": "string",
-            "enum": ["SENT", "DELIVERED", "FAILED"]
+            "description": "Transaction unique identifier",
+            "example": "txn-12345"
+          },
+          "token": {
+            "type": "string",
+            "description": "Device token for push notification",
+            "example": "device-token-abc123"
           },
           "platform": {
             "type": "string",
-            "enum": ["IOS", "ANDROID", "WEBPUSH"]
+            "enum": ["IOS", "ANDROID", "WEB"],
+            "description": "Target platform for notification",
+            "example": "IOS"
           },
-          "error_msg": {
-            "type": "string"
+          "notification_title": {
+            "type": "string",
+            "description": "Title of the notification",
+            "example": "Payment Confirmation"
+          },
+          "notification_body": {
+            "type": "string",
+            "description": "Body content of the notification",
+            "example": "Your payment has been processed successfully"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SENT", "DELIVERED", "FAILED"],
+            "description": "Current status of the notification",
+            "example": "DELIVERED"
+          },
+          "send_ts": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Timestamp when notification was sent (Unix timestamp)",
+            "example": 1640995200
+          },
+          "delivered_ts": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Timestamp when notification was delivered (Unix timestamp)",
+            "example": 1640995210,
+            "nullable": true
+          },
+          "failed_ts": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Timestamp when notification failed (Unix timestamp)",
+            "example": 1640995220,
+            "nullable": true
           },
           "ap_id": {
             "type": "string",
-            "description": "服務的來源 AP ID"
+            "description": "Application identifier",
+            "example": "mobile-app-001"
+          },
+          "created_at": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Record creation timestamp (Unix timestamp)",
+            "example": 1640995200
           }
         }
       },
-      "QueryResult": {
+      "QueryResponse": {
         "type": "object",
+        "required": ["success", "count", "items"],
         "properties": {
           "success": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the query was successful",
+            "example": true
           },
-          "data": {
+          "count": {
+            "type": "integer",
+            "description": "Number of items returned",
+            "example": 1
+          },
+          "items": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/NotificationRecord"
-            }
-          },
-          "message": {
-            "type": "string"
-          },
-          "total_count": {
-            "type": "integer"
+            },
+            "description": "Array of notification records"
           }
         }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": {
+            "type": "string",
+            "description": "Error message",
+            "example": "Missing required parameter: transaction_id"
+          },
+          "code": {
+            "type": "string",
+            "description": "Error code",
+            "example": "INVALID_REQUEST"
+          },
+          "details": {
+            "type": "string",
+            "description": "Additional error details",
+            "example": "The transaction_id parameter is required and cannot be empty"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-API-Key"
+      },
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
       }
     }
   },
-  "x-amazon-apigateway-policy": {
-    "Version": "2012-10-17",
-    "Statement": [
-      {
-        "Effect": "Allow",
-        "Principal": "*",
-        "Action": "execute-api:Invoke",
-        "Resource": "arn:aws:execute-api:ap-southeast-1:ACCOUNT_ID:*/*/query/*",
-        "Condition": {
-          "StringEquals": {
-            "aws:sourceVpc": "vpc-XXXXXXXXX"
-          }
-        }
-      }
-    ]
-  }
+  "security": [
+    {
+      "ApiKeyAuth": []
+    },
+    {
+      "BearerAuth": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Transaction Query",
+      "description": "Query notification records by transaction ID"
+    },
+    {
+      "name": "Failed Query",
+      "description": "Query failed notification records"
+    }
+  ]
 }

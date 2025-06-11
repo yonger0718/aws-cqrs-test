@@ -1,0 +1,55 @@
+{
+  "Records": [
+    {
+      "eventID": "1",
+      "eventName": "INSERT",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "ap-southeast-1",
+      "dynamodb": {
+        "ApproximateCreationDateTime": 1732000000.0,
+        "Keys": {
+          "transaction_id": {
+            "S": "tx-ios-001"
+          }
+        },
+        "NewImage": {
+          "transaction_id": {
+            "S": "tx-ios-001"
+          },
+          "created_at": {
+            "N": "1732000000"
+          },
+          "user_id": {
+            "S": "user-123"
+          },
+          "notification_title": {
+            "S": "Welcome to our app!"
+          },
+          "status": {
+            "S": "SENT"
+          },
+          "platform": {
+            "S": "IOS"
+          },
+          "marketing_id": {
+            "S": "welcome-campaign-2024"
+          },
+          "device_token": {
+            "S": "apns-device-token-123"
+          },
+          "payload": {
+            "S": "{\"aps\":{\"alert\":\"Welcome!\",\"sound\":\"default\"}}"
+          },
+          "ap_id": {
+            "S": "ap-001"
+          }
+        },
+        "SequenceNumber": "1",
+        "SizeBytes": 512,
+        "StreamViewType": "NEW_AND_OLD_IMAGES"
+      },
+      "eventSourceARN": "arn:aws:dynamodb:ap-southeast-1:123456789012:table/command-records/stream/2024-11-19T00:00:00.000"
+    }
+  ]
+}

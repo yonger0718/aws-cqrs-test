@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # CQRS LocalStack 環境變量設置腳本
-# 使用方法: source scripts/setup_env.sh
+# 使用方法: source scripts/development/setup_env.sh
 
 # ANSI 顏色定義
 GREEN='\033[0;32m'
@@ -35,5 +35,5 @@ echo -e "${CYAN}  EKS_HANDLER_ENDPOINT=$EKS_HANDLER_ENDPOINT${NC}"
 echo -e "${CYAN}  API_GATEWAY_ENDPOINT=$API_GATEWAY_ENDPOINT${NC}"
 echo -e ""
 echo -e "${YELLOW}提示: 要在其他終端中使用這些變量，請執行:${NC}"
-echo -e "${GRAY}  source scripts/setup_env.sh${NC}"
+echo -e "${GRAY}  source scripts/development/setup_env.sh${NC}"
 echo -e ""

@@ -1,19 +1,15 @@
 import json
 import os
 from decimal import Decimal
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
-from aws_lambda_powertools.event_handler.api_gateway import APIGatewayHttpResolver
-from aws_lambda_powertools.event_handler.exceptions import (
-    BadRequestError,
-    InternalServerError,
-    ServiceError,
-)
+from aws_lambda_powertools.event_handler import APIGatewayHttpResolver
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError, InternalServerError
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from boto3.dynamodb.conditions import Key
+from boto3.dynamodb.conditions import Attr
 from botocore.exceptions import BotoCoreError, ClientError
 
 # Environment detection
@@ -70,24 +66,25 @@ class QueryService:
         logger.info(f"QueryService initialized with table: {table_name}")
 
     @tracer.capture_method
-    def query_user_notifications(self, user_id: str, limit: int = 10) -> Dict[str, Any]:
-        """Query recent notification records by user_id"""
-        logger.info("Starting user notifications query", extra={"user_id": user_id, "limit": limit})
+    def query_transaction_notifications(self, transaction_id: str) -> Dict[str, Any]:
+        """Query notification records by transaction_id (Primary Key)"""
+        logger.info(
+            "Starting transaction notifications query", extra={"transaction_id": transaction_id}
+        )
 
         try:
-            response = self.table.query(
-                KeyConditionExpression=Key("user_id").eq(user_id),
-                ScanIndexForward=False,  # Descending order (newest first)
-                Limit=limit,
-            )
+            # 使用 transaction_id 作為主鍵進行查詢
+            response = self.table.get_item(Key={"transaction_id": transaction_id})
 
-            items = response.get("Items", [])
+            item = response.get("Item")
             consumed_capacity = response.get("ConsumedCapacity", {})
 
+            items = [item] if item else []
+
             logger.info(
-                "User notifications query completed successfully",
+                "Transaction notifications query completed successfully",
                 extra={
-                    "user_id": user_id,
+                    "transaction_id": transaction_id,
                     "items_found": len(items),
                     "consumed_capacity": (
                         consumed_capacity.get("CapacityUnits", 0) if consumed_capacity else 0
@@ -102,9 +99,9 @@ class QueryService:
             error_message = e.response.get("Error", {}).get("Message", str(e))
 
             logger.error(
-                "DynamoDB ClientError in user notifications query",
+                "DynamoDB ClientError in transaction notifications query",
                 extra={
-                    "user_id": user_id,
+                    "transaction_id": transaction_id,
                     "error_code": error_code,
                     "error_message": error_message,
                 },
@@ -112,91 +109,63 @@ class QueryService:
             raise
         except BotoCoreError as e:
             logger.error(
-                "BotoCoreError in user notifications query",
-                extra={"user_id": user_id, "error": str(e)},
+                "BotoCoreError in transaction notifications query",
+                extra={"transaction_id": transaction_id, "error": str(e)},
             )
             raise
         except Exception as e:
             logger.error(
-                "Unexpected error in user notifications query",
-                extra={"user_id": user_id, "error": str(e)},
+                "Unexpected error in transaction notifications query",
+                extra={"transaction_id": transaction_id, "error": str(e)},
             )
             raise
 
     @tracer.capture_method
-    def query_marketing_notifications(self, marketing_id: str) -> Dict[str, Any]:
-        """Query all notification records by marketing_id"""
-        logger.info("Starting marketing notifications query", extra={"marketing_id": marketing_id})
+    def query_failed_notifications(self, transaction_id: Optional[str] = None) -> Dict[str, Any]:
+        """Query failed notification records by transaction_id or all failed records"""
+        logger.info(
+            "Starting failed notifications query", extra={"transaction_id": transaction_id or "all"}
+        )
 
         try:
-            response = self.table.query(
-                IndexName="marketing_id-index",
-                KeyConditionExpression=Key("marketing_id").eq(marketing_id),
-                ScanIndexForward=False,  # Descending order
-            )
+            if transaction_id and transaction_id.strip():
+                # Query specific transaction and check if it's failed
+                logger.info(f"Querying specific transaction: {transaction_id}")
+                response = self.table.get_item(Key={"transaction_id": transaction_id})
 
-            items = response.get("Items", [])
-            consumed_capacity = response.get("ConsumedCapacity", {})
+                item = response.get("Item")
+                items = []
 
-            logger.info(
-                "Marketing notifications query completed successfully",
-                extra={
-                    "marketing_id": marketing_id,
-                    "items_found": len(items),
-                    "consumed_capacity": (
-                        consumed_capacity.get("CapacityUnits", 0) if consumed_capacity else 0
+                # If the record exists and status is FAILED, return it
+                if item and item.get("status") == "FAILED":
+                    items = [item]
+                    logger.info(f"Found failed record for transaction: {transaction_id}")
+                else:
+                    logger.info(f"No failed record found for transaction: {transaction_id}")
+
+                consumed_capacity = response.get("ConsumedCapacity", {})
+            else:
+                # Query all failed notifications using scan
+                logger.info("Querying all failed notifications")
+                response = self.table.scan(
+                    FilterExpression=Attr("status").eq("FAILED"),
+                    ProjectionExpression=(
+                        "transaction_id, #token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at"
                     ),
-                },
-            )
+                    ExpressionAttributeNames={"#token": "token", "#status": "status"},
+                )
 
-            return {"success": True, "items": items, "count": len(items)}
+                items = response.get("Items", [])
+                consumed_capacity = response.get("ConsumedCapacity", {})
 
-        except ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "UnknownError")
-            error_message = e.response.get("Error", {}).get("Message", str(e))
-
-            logger.error(
-                "DynamoDB ClientError in marketing notifications query",
-                extra={
-                    "marketing_id": marketing_id,
-                    "error_code": error_code,
-                    "error_message": error_message,
-                },
-            )
-            raise
-        except BotoCoreError as e:
-            logger.error(
-                "BotoCoreError in marketing notifications query",
-                extra={"marketing_id": marketing_id, "error": str(e)},
-            )
-            raise
-        except Exception as e:
-            logger.error(
-                "Unexpected error in marketing notifications query",
-                extra={"marketing_id": marketing_id, "error": str(e)},
-            )
-            raise
-
-    @tracer.capture_method
-    def query_failed_notifications(self, transaction_id: str) -> Dict[str, Any]:
-        """Query failed notification records by transaction_id"""
-        logger.info("Starting failed notifications query", extra={"transaction_id": transaction_id})
-
-        try:
-            response = self.table.query(
-                IndexName="transaction_id-status-index",
-                KeyConditionExpression=(
-                    Key("transaction_id").eq(transaction_id) & Key("status").eq("FAILED")
-                ),
-            )
-
-            items = response.get("Items", [])
-            consumed_capacity = response.get("ConsumedCapacity", {})
+                logger.info(f"Found {len(items)} failed notifications")
 
             logger.info(
                 "Failed notifications query completed successfully",
                 extra={
-                    "transaction_id": transaction_id,
+                    "transaction_id": transaction_id or "all",
                     "items_found": len(items),
                     "consumed_capacity": (
                         consumed_capacity.get("CapacityUnits", 0) if consumed_capacity else 0
@@ -213,7 +182,7 @@ class QueryService:
             logger.error(
                 "DynamoDB ClientError in failed notifications query",
                 extra={
-                    "transaction_id": transaction_id,
+                    "transaction_id": transaction_id or "all",
                     "error_code": error_code,
                     "error_message": error_message,
                 },
@@ -222,37 +191,41 @@ class QueryService:
         except BotoCoreError as e:
             logger.error(
                 "BotoCoreError in failed notifications query",
-                extra={"transaction_id": transaction_id, "error": str(e)},
+                extra={"transaction_id": transaction_id or "all", "error": str(e)},
             )
             raise
         except Exception as e:
             logger.error(
                 "Unexpected error in failed notifications query",
-                extra={"transaction_id": transaction_id, "error": str(e)},
+                extra={"transaction_id": transaction_id or "all", "error": str(e)},
             )
             raise
 
 
 def format_notification_items(items: list) -> list:
-    """Format notification record items with enhanced data handling"""
+    """Format notification record items with enhanced data handling based on new schema"""
     formatted_items = []
 
     for item in items:
         try:
             formatted_item = {
-                "user_id": item.get("user_id"),
-                "created_at": int(item.get("created_at", 0)),
                 "transaction_id": item.get("transaction_id"),
-                "marketing_id": item.get("marketing_id"),
-                "notification_title": item.get("notification_title"),
-                "status": item.get("status"),
+                "token": item.get("token"),
                 "platform": item.get("platform"),
+                "notification_title": item.get("notification_title"),
+                "notification_body": item.get("notification_body"),
+                "status": item.get("status"),
+                "send_ts": int(item.get("send_ts", 0)) if item.get("send_ts") else None,
+                "delivered_ts": (
+                    int(item.get("delivered_ts", 0)) if item.get("delivered_ts") else None
+                ),
+                "failed_ts": int(item.get("failed_ts", 0)) if item.get("failed_ts") else None,
+                "ap_id": item.get("ap_id"),
+                "created_at": int(item.get("created_at", 0)),
             }
 
-            # Only include error_msg if it exists and is not empty
-            error_msg = item.get("error_msg")
-            if error_msg and error_msg.strip():
-                formatted_item["error_msg"] = error_msg
+            # Remove None values to keep response clean
+            formatted_item = {k: v for k, v in formatted_item.items() if v is not None}
 
             formatted_items.append(formatted_item)
 
@@ -272,30 +245,17 @@ def format_notification_items(items: list) -> list:
 query_service = QueryService(TABLE_NAME)
 
 
-@app.get("/user")
+@app.get("/tx")
 @tracer.capture_method
-def get_user_notifications() -> Dict[str, Any]:
-    """Query user notification records"""
+def get_transaction_notifications() -> Dict[str, Any]:
+    """Query notification records by transaction_id"""
     try:
-        user_id = app.current_event.get_query_string_value("user_id")
-        if not user_id or not user_id.strip():
-            logger.warning("Missing or empty user_id parameter")
-            raise BadRequestError("Missing or empty user_id parameter")
+        transaction_id = app.current_event.get_query_string_value("transaction_id")
+        if not transaction_id or not transaction_id.strip():
+            logger.warning("Missing or empty transaction_id parameter")
+            raise BadRequestError("Missing or empty transaction_id parameter")
 
-        # Optional limit parameter
-        limit_str = app.current_event.get_query_string_value("limit")
-        limit = 10  # default
-        if limit_str:
-            try:
-                limit = int(limit_str)
-                if limit <= 0 or limit > 100:
-                    logger.warning(f"Invalid limit value: {limit_str}")
-                    raise BadRequestError("Limit must be between 1 and 100")
-            except ValueError:
-                logger.warning(f"Invalid limit format: {limit_str}")
-                raise BadRequestError("Limit must be a valid integer")
-
-        result = query_service.query_user_notifications(user_id, limit)
+        result = query_service.query_transaction_notifications(transaction_id)
         formatted_items = format_notification_items(result["items"])
 
         return {
@@ -304,52 +264,31 @@ def get_user_notifications() -> Dict[str, Any]:
             "items": formatted_items,
         }
 
+    except BadRequestError:
+        # Re-raise BadRequestError to let PowerTools handle it
+        raise
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "UnknownError")
-        logger.error(f"DynamoDB error in query_user: {error_code}")
-        raise ServiceError(f"Database error: {error_code}")
+        logger.error(f"DynamoDB error in query_transaction: {error_code}")
+        raise InternalServerError("Database connection error")
     except Exception as e:
-        logger.error(f"Error in query_user: {str(e)}")
-        raise InternalServerError("Internal server error")
-
-
-@app.get("/marketing")
-@tracer.capture_method
-def get_marketing_notifications() -> Dict[str, Any]:
-    """Query marketing campaign notification records"""
-    try:
-        marketing_id = app.current_event.get_query_string_value("marketing_id")
-        if not marketing_id or not marketing_id.strip():
-            logger.warning("Missing or empty marketing_id parameter")
-            raise BadRequestError("Missing or empty marketing_id parameter")
-
-        result = query_service.query_marketing_notifications(marketing_id)
-        formatted_items = format_notification_items(result["items"])
-
-        return {
-            "success": True,
-            "count": len(formatted_items),
-            "items": formatted_items,
-        }
-
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "UnknownError")
-        logger.error(f"DynamoDB error in query_marketing: {error_code}")
-        raise ServiceError(f"Database error: {error_code}")
-    except Exception as e:
-        logger.error(f"Error in query_marketing: {str(e)}")
+        logger.error(f"Error in query_transaction: {str(e)}")
         raise InternalServerError("Internal server error")
 
 
 @app.get("/fail")
 @tracer.capture_method
 def get_failed_notifications() -> Dict[str, Any]:
-    """Query failed notification records"""
+    """Query failed notification records - transaction_id is optional"""
     try:
         transaction_id = app.current_event.get_query_string_value("transaction_id")
-        if not transaction_id or not transaction_id.strip():
-            logger.warning("Missing or empty transaction_id parameter")
-            raise BadRequestError("Missing or empty transaction_id parameter")
+        # transaction_id is optional for failed notifications query
+        if transaction_id and not transaction_id.strip():
+            transaction_id = None  # Treat empty string as None
+
+        logger.info(
+            f"Querying failed notifications for " f"transaction_id: {transaction_id or 'all'}"
+        )
 
         result = query_service.query_failed_notifications(transaction_id)
         formatted_items = format_notification_items(result["items"])
@@ -363,7 +302,7 @@ def get_failed_notifications() -> Dict[str, Any]:
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "UnknownError")
         logger.error(f"DynamoDB error in query_fail: {error_code}")
-        raise ServiceError(f"Database error: {error_code}")
+        raise InternalServerError("Database connection error")
     except Exception as e:
         logger.error(f"Error in query_fail: {str(e)}")
         raise InternalServerError("Internal server error")
@@ -375,6 +314,8 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
     """
     Lambda function to query DynamoDB based on different criteria
     Supports both direct Lambda invocation and API Gateway events
+
+    Version: v4 - Optimized for transaction_id based queries only
     """
     try:
         logger.info(
@@ -401,42 +342,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         query_type = body.get("query_type")
         logger.info("Processing direct Lambda invocation", extra={"query_type": query_type})
 
-        if query_type == "user":
-            user_id = body.get("user_id")
-            if not user_id or not user_id.strip():
-                logger.warning("Missing or empty user_id in direct invocation")
-                return {
-                    "statusCode": 400,
-                    "headers": {"Content-Type": "application/json"},
-                    "body": json.dumps({"error": "Missing or empty user_id"}),
-                }
-
-            limit = body.get("limit", 10)
-            if not isinstance(limit, int) or limit <= 0 or limit > 100:
-                logger.warning(f"Invalid limit value in direct invocation: {limit}")
-                return {
-                    "statusCode": 400,
-                    "headers": {"Content-Type": "application/json"},
-                    "body": json.dumps({"error": "Limit must be between 1 and 100"}),
-                }
-
-            result = query_service.query_user_notifications(user_id, limit)
-            formatted_items = format_notification_items(result["items"])
-
-        elif query_type == "marketing":
-            marketing_id = body.get("marketing_id")
-            if not marketing_id or not marketing_id.strip():
-                logger.warning("Missing or empty marketing_id in direct invocation")
-                return {
-                    "statusCode": 400,
-                    "headers": {"Content-Type": "application/json"},
-                    "body": json.dumps({"error": "Missing or empty marketing_id"}),
-                }
-
-            result = query_service.query_marketing_notifications(marketing_id)
-            formatted_items = format_notification_items(result["items"])
-
-        elif query_type == "fail":
+        if query_type == "tx":
             transaction_id = body.get("transaction_id")
             if not transaction_id or not transaction_id.strip():
                 logger.warning("Missing or empty transaction_id in direct invocation")
@@ -445,6 +351,19 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                     "headers": {"Content-Type": "application/json"},
                     "body": json.dumps({"error": "Missing or empty transaction_id"}),
                 }
+
+            result = query_service.query_transaction_notifications(transaction_id)
+            formatted_items = format_notification_items(result["items"])
+
+        elif query_type == "fail":
+            transaction_id = body.get("transaction_id")
+            # transaction_id is optional for failed notifications query
+            if transaction_id and not transaction_id.strip():
+                transaction_id = None  # Treat empty string as None
+
+            logger.info(
+                f"Direct invocation: failed query for " f"transaction_id: {transaction_id or 'all'}"
+            )
 
             result = query_service.query_failed_notifications(transaction_id)
             formatted_items = format_notification_items(result["items"])
@@ -457,7 +376,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 "body": json.dumps(
                     {
                         "error": "Invalid query_type",
-                        "supported_types": ["user", "marketing", "fail"],
+                        "supported_types": ["tx", "fail"],
                     }
                 ),
             }
@@ -485,27 +404,16 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
 
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "UnknownError")
-        logger.error(f"DynamoDB ClientError in lambda_handler: {error_code}")
+        logger.error(f"DynamoDB error: {error_code}")
         return {
-            "statusCode": 503,
+            "statusCode": 502,
             "headers": {"Content-Type": "application/json"},
-            "body": json.dumps({"success": False, "error": f"Database error: {error_code}"}),
-        }
-    except json.JSONDecodeError as e:
-        logger.error(f"JSON decode error in lambda_handler: {str(e)}")
-        return {
-            "statusCode": 400,
-            "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(
-                {"success": False, "error": "Invalid JSON format", "details": str(e)}
-            ),
+            "body": json.dumps({"error": "Database connection error", "code": error_code}),
         }
     except Exception as e:
-        logger.error(f"Unhandled error in lambda_handler: {str(e)}")
+        logger.error(f"Unexpected error: {str(e)}")
         return {
             "statusCode": 500,
             "headers": {"Content-Type": "application/json"},
-            "body": json.dumps(
-                {"success": False, "error": "Internal server error", "details": str(e)}
-            ),
+            "body": json.dumps({"error": "Internal server error", "details": str(e)}),
         }

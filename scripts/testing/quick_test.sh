@@ -131,8 +131,8 @@ echo -e "${GRAY}  poetry run black .      # 代碼格式化${NC}"
 echo -e "${GRAY}  poetry shell            # 進入虛擬環境${NC}"
 
 echo -e "\n${YELLOW}🔧 故障排除:${NC}"
-echo -e "${GRAY}  ./scripts/restart_services.sh     # 重啟服務${NC}"
-echo -e "${GRAY}  ./scripts/fix_api_gateway.sh      # 修復 API Gateway${NC}"
+echo -e "${GRAY}  ./scripts/deployment/restart_services.sh     # 重啟服務${NC}"
+echo -e "${GRAY}  ./scripts/infrastructure/fix_api_gateway.sh      # 修復 API Gateway${NC}"
 echo -e "${GRAY}  ./scripts/testing/test_coverage.sh # 完整測試${NC}"
 
 echo -e "\n${GREEN}✅ 快速測試完成！${NC}"

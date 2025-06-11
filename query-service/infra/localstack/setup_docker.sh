@@ -292,6 +292,13 @@ MARKETING_ID=$(awslocal apigateway create-resource \
     --path-part "marketing" \
     --query 'id' --output text)
 
+# 創建 /tx 資源
+TX_ID=$(awslocal apigateway create-resource \
+    --rest-api-id $API_ID \
+    --parent-id $ROOT_ID \
+    --path-part "tx" \
+    --query 'id' --output text)
+
 # 創建 /fail 資源
 FAIL_ID=$(awslocal apigateway create-resource \
     --rest-api-id $API_ID \
@@ -300,7 +307,7 @@ FAIL_ID=$(awslocal apigateway create-resource \
     --query 'id' --output text)
 
 # 為每個資源創建 GET 方法並整合 Lambda
-for RESOURCE_ID in $USER_ID $MARKETING_ID $FAIL_ID; do
+for RESOURCE_ID in $USER_ID $MARKETING_ID $TX_ID $FAIL_ID; do
     # 創建 GET 方法
     awslocal apigateway put-method \
         --rest-api-id $API_ID \
@@ -359,6 +366,7 @@ echo ""
 echo "🧪 Test Commands:"
 echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/user?user_id=test_user_001\""
 echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/marketing?marketing_id=campaign_2024_new_year\""
+echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/tx?transaction_id=txn_001\""
 echo "curl \"http://localhost:4566/restapis/$API_ID/dev/_user_request_/fail?transaction_id=tx_002\""
 echo ""
 echo "LocalStack Docker initialization completed!"

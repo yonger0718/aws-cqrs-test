@@ -95,7 +95,7 @@ fi
 # 修復 API Gateway
 echo -e "\n${YELLOW}6. 修復 API Gateway...${NC}"
 cd ..
-./scripts/fix_api_gateway.sh
+./scripts/infrastructure/fix_api_gateway.sh
 
 echo -e "\n${GREEN}✅ 服務重啟和初始化完成${NC}"
 echo -e "${GREEN}======================================${NC}"

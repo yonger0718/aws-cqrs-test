@@ -1,57 +1,91 @@
-# 📚 專案文檔索引
+# AWS CQRS + Hexagonal Architecture 文檔
 
-本目錄包含 AWS Hexagon 通知測試專案的所有文檔資料。
+歡迎使用 AWS CQRS + 六邊形架構通知系統的完整文檔。
 
-## 📁 目錄結構
+## 📚 文檔目錄
 
-### 🧪 [testing/](./testing/) - 測試相關文檔
+### 🏗️ 架構設計
+- [CQRS + 六邊形架構設計 V4](architecture/cqrs-hexagonal-design-v4.md) ⭐ **最新版本**
+- [CQRS + 六邊形架構設計 (舊版)](architecture/cqrs-hexagonal-design.md) ⚠️ **已廢棄**
 
-- **[VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md)** - 系統測試驗證指南 ⭐ **推薦**
-- **[QUICK_TEST_GUIDE.md](./testing/QUICK_TEST_GUIDE.md)** - 快速測試指南
-- **[TESTING_GUIDE.md](./testing/TESTING_GUIDE.md)** - 完整測試指南
+### 📡 API 文檔
+- [API 變更說明 V4](api/api-changes-v4.md) ⭐ **最新版本**
+- [API 變更說明 V3](api/api-changes-v3.md) ⚠️ **已廢棄**
 
-### 📖 [guides/](./guides/) - 使用指南
+### 🚀 部署指南
+- [Lambda Docker 部署指南](deployment/lambda-docker-deployment.md)
 
-- **[FINAL_USAGE_GUIDE.md](./guides/FINAL_USAGE_GUIDE.md)** - 最終使用指南
-- **[MANUAL_QUERY_GUIDE.md](./guides/MANUAL_QUERY_GUIDE.md)** - 手動查詢指南
-- **[README_QUERY_TOOLS.md](./guides/README_QUERY_TOOLS.md)** - 查詢工具說明
+### 🛠️ 開發指南
+- [CI/CD 與 Pre-commit 一致性](development/ci-precommit-consistency.md)
+- [Pre-commit CI 一致性](development/pre-commit-ci-consistency.md)
 
-### 🏗️ [architecture/](./architecture/) - 架構文檔
+### 🧪 測試指南
+- [驗證指南](testing/VERIFICATION_GUIDE.md)
 
-- **[cqrs-hexagonal-design.md](./architecture/cqrs-hexagonal-design.md)** - CQRS + 六邊形設計詳解
-- **[ecs-migration-guide.md](./architecture/ecs-migration-guide.md)** - ECS Fargate 遷移指南 ⭐ **新增**
-- **[CQRS_SUCCESS.md](./architecture/CQRS_SUCCESS.md)** - CQRS 架構成功實作
-- **[query_service_requirements_v2.md](./architecture/query_service_requirements_v2.md)** - 查詢服務需求 v2
-- **[query_service_requirements.md](./architecture/query_service_requirements.md)** - 查詢服務原始需求
+### 📄 其他資源
+- [專案總結](project/)
+- [遷移指南](migration/)
+- [使用指南](guides/)
 
-### 🚀 [deployment/](./deployment/) - 部署文檔
+## 🔧 腳本工具
 
-- **[gui-deployment.md](./deployment/gui-deployment.md)** - GUI 部署指南 ⭐ **推薦新手**
-- **[ecs-deployment.md](./deployment/ecs-deployment.md)** - 命令列部署指南 ⭐ **進階用戶**
+詳細的腳本使用說明請參考 [Scripts 目錄](../scripts/README.md)
 
-### 📡 [api/](./api/) - API 文檔
+### 快速開始
+```bash
+# 設定開發環境
+./scripts/development/setup_env.sh
 
-- **[api-changes-v3.md](./api/api-changes-v3.md)** - V3 版本 API 變更說明 ⭐ **新增**
+# 快速測試
+./scripts/testing/quick_test.sh
 
-### 📊 [project/](./project/) - 專案總結
+# 部署服務
+./scripts/deployment/restart_services.sh
+```
 
-- **[PROJECT_SUMMARY.md](./project/PROJECT_SUMMARY.md)** - 專案開發總結
-- **[SUCCESS_SUMMARY.md](./project/SUCCESS_SUMMARY.md)** - 成功實作總結
+## 📋 版本說明
 
-## 🚀 快速開始
+### V4 (目前版本) ⭐
+- 簡化的 Transaction 導向 API
+- Internal API Gateway 整合
+- 統一的 NotificationRecord 模型
+- ECS + HTTP 通信模式
 
-1. **新手入門**: 從 [FINAL_USAGE_GUIDE.md](./guides/FINAL_USAGE_GUIDE.md) 開始
-2. **架構理解**: 閱讀 [ecs-migration-guide.md](./architecture/ecs-migration-guide.md) ⭐ **最新架構**
-3. **部署指南**:
-   - **圖形介面**: [gui-deployment.md](./deployment/gui-deployment.md) ⭐ **推薦新手**
-   - **命令列**: [ecs-deployment.md](./deployment/ecs-deployment.md) ⭐ **進階用戶**
-4. **API 變更**: 查看 [api-changes-v3.md](./api/api-changes-v3.md) ⭐ **重要更新**
-5. **測試驗證**: 參考 [VERIFICATION_GUIDE.md](./testing/VERIFICATION_GUIDE.md)
-6. **專案回顧**: 查看 [PROJECT_SUMMARY.md](./project/PROJECT_SUMMARY.md)
+### V3 (已廢棄) ⚠️
+- 多維度查詢 API
+- 複雜的多端點設計
+- 直接 Lambda 調用
 
-## 📝 文檔維護
+## 🚀 快速導航
 
-- 所有文檔採用繁體中文撰寫
-- 使用 Markdown 格式
-- 包含完整的截圖和程式碼範例
-- 定期更新以反映最新的專案狀態
+### 新用戶
+1. 閱讀 [架構設計 V4](architecture/cqrs-hexagonal-design-v4.md)
+2. 查看 [API 文檔 V4](api/api-changes-v4.md)
+3. 運行 [快速測試](../scripts/testing/quick_test.sh)
+
+### 開發者
+1. 檢查 [開發環境設定](development/)
+2. 閱讀 [測試指南](testing/)
+3. 使用 [開發腳本](../scripts/development/)
+
+### 部署人員
+1. 參考 [部署指南](deployment/)
+2. 使用 [部署腳本](../scripts/deployment/)
+3. 執行 [驗證腳本](../scripts/verification/)
+
+## 🔍 問題排除
+
+如果遇到問題，請按以下順序檢查：
+
+1. **環境設定**: [開發指南](development/)
+2. **測試運行**: [測試指南](testing/)
+3. **一致性檢查**: [CI/CD 一致性](development/ci-precommit-consistency.md)
+4. **腳本工具**: [Scripts 目錄](../scripts/README.md)
+
+## 📞 支援
+
+如有問題請：
+1. 檢查相關文檔
+2. 運行診斷腳本
+3. 查看 GitHub Issues
+4. 聯絡開發團隊

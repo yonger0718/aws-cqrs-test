@@ -4,10 +4,11 @@ Query Service EKS Handler
 CQRS 架構的查詢服務 - Query Side 實現
 採用六邊形架構 (Hexagonal Architecture) 設計
 
+版本：v4 - 專注於 transaction_id 基礎查詢的優化版本
+
 主要功能：
-1. 用戶推播記錄查詢
-2. 行銷活動推播統計
-3. 失敗推播記錄追蹤
+1. 交易推播記錄查詢（通過 transaction_id）
+2. 失敗推播記錄追蹤（通過 transaction_id + status 過濾）
 
 架構層次：
 - Domain Layer: 領域模型與介面
@@ -24,7 +25,7 @@ from datetime import UTC, datetime
 from typing import Any, Dict, List, Optional
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel, Field
 
 # 設置日誌
@@ -40,17 +41,19 @@ logger = logging.getLogger(__name__)
 
 
 class NotificationRecord(BaseModel):
-    """推播記錄領域模型"""
+    """推播記錄領域模型 - 更新以符合新的 schema"""
 
-    user_id: str
-    transaction_id: str
-    created_at: int
-    marketing_id: Optional[str] = None
-    notification_title: str
-    status: str = Field(..., pattern="^(SENT|DELIVERED|FAILED)$")
-    platform: str = Field(..., pattern="^(IOS|ANDROID|WEBPUSH)$")
-    error_msg: Optional[str] = None
-    ap_id: Optional[str] = None
+    transaction_id: str = Field(..., description="唯一事件識別碼")
+    token: Optional[str] = Field(None, description="推播 token")
+    platform: str = Field(..., pattern="^(IOS|ANDROID|WEBPUSH)$", description="平台類型")
+    notification_title: str = Field(..., description="推播標題")
+    notification_body: str = Field(..., description="推播內容")
+    status: str = Field(..., pattern="^(SENT|DELIVERED|FAILED)$", description="推播狀態")
+    send_ts: Optional[int] = Field(None, description="送出時間戳")
+    delivered_ts: Optional[int] = Field(None, description="送達時間戳")
+    failed_ts: Optional[int] = Field(None, description="失敗時間戳")
+    ap_id: Optional[str] = Field(None, description="來源服務識別碼")
+    created_at: int = Field(..., description="建立時間戳")
 
 
 class QueryResult(BaseModel):
@@ -71,11 +74,7 @@ class QueryPort(ABC):
     """查詢服務端口接口"""
 
     @abstractmethod
-    async def query_user_notifications(self, user_id: str) -> QueryResult:
-        pass
-
-    @abstractmethod
-    async def query_marketing_notifications(self, marketing_id: str) -> QueryResult:
+    async def query_transaction_notifications(self, transaction_id: str) -> QueryResult:
         pass
 
     @abstractmethod
@@ -123,11 +122,10 @@ class InternalAPIAdapter(InternalAPIInvokerPort):
     async def invoke_query_api(self, query_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         """調用 Internal API Gateway 查詢端點"""
         try:
-            # 根據查詢類型構建端點 URL
+            # 根據查詢類型構建端點 URL - 使用 GET 方法的路徑
             endpoint_map = {
-                "user": "/query/user",
-                "marketing": "/query/marketing",
-                "fail": "/query/fail",
+                "transaction": "/tx",
+                "fail": "/fail",
             }
 
             if query_type not in endpoint_map:
@@ -137,14 +135,14 @@ class InternalAPIAdapter(InternalAPIInvokerPort):
             url = f"{self.internal_api_url}{endpoint}"
 
             logger.info(f"Invoking Internal API Gateway: {url}")
-            logger.info(f"Payload: {payload}")
+            logger.info(f"Query parameters: {payload}")
 
             # 準備請求標頭
             headers = {"Content-Type": "application/json", "User-Agent": "ECS-QueryService/1.0"}
 
-            # 發送 HTTP POST 請求到 Internal API Gateway
+            # 發送 HTTP GET 請求到 Internal API Gateway（使用 query parameters）
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                response = await client.post(url, json=payload, headers=headers)
+                response = await client.get(url, params=payload, headers=headers)
 
                 # 記錄響應狀態
                 logger.info(f"Internal API Gateway response status: {response.status_code}")
@@ -197,87 +195,90 @@ class QueryService(QueryPort):
     def __init__(self, internal_api_adapter: InternalAPIInvokerPort):
         self.internal_api_adapter = internal_api_adapter
 
-    async def query_user_notifications(self, user_id: str) -> QueryResult:
-        """查詢用戶推播記錄"""
+    async def query_transaction_notifications(self, transaction_id: str) -> QueryResult:
+        """查詢交易推播記錄"""
         try:
-            payload = {"user_id": user_id}
-            result = await self.internal_api_adapter.invoke_query_api("user", payload)
-
-            return self._process_query_result(
-                result, f"Successfully retrieved notifications for user: {user_id}"
-            )
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.error(f"Error querying user notifications for {user_id}: {e}")
-            raise HTTPException(
-                status_code=500, detail=f"Failed to query user notifications: {str(e)}"
-            )
-
-    async def query_marketing_notifications(self, marketing_id: str) -> QueryResult:
-        """查詢行銷活動推播記錄"""
-        try:
-            payload = {"marketing_id": marketing_id}
-            result = await self.internal_api_adapter.invoke_query_api("marketing", payload)
+            payload = {"transaction_id": transaction_id}
+            result = await self.internal_api_adapter.invoke_query_api("transaction", payload)
 
             return self._process_query_result(
                 result,
-                f"Successfully retrieved notifications for marketing campaign: {marketing_id}",
+                f"Successfully retrieved notifications for transaction: {transaction_id}",
             )
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error querying marketing notifications for {marketing_id}: {e}")
+            logger.error(f"Error querying transaction notifications for {transaction_id}: {e}")
             raise HTTPException(
-                status_code=500, detail=f"Failed to query marketing notifications: {str(e)}"
+                status_code=500, detail=f"Failed to query transaction notifications: {str(e)}"
             )
 
-    async def query_failed_notifications(self, transaction_id: str) -> QueryResult:
+    async def query_failed_notifications(self, transaction_id: Optional[str] = None) -> QueryResult:
         """查詢失敗推播記錄"""
         try:
-            payload = {"transaction_id": transaction_id}
+            payload = {}
+            if transaction_id and transaction_id.strip():
+                payload["transaction_id"] = transaction_id
+                message_suffix = f"transaction: {transaction_id}"
+            else:
+                message_suffix = "all failed notifications"
+
             result = await self.internal_api_adapter.invoke_query_api("fail", payload)
 
             return self._process_query_result(
                 result,
-                f"Successfully retrieved failed notifications for transaction: {transaction_id}",
+                f"Successfully retrieved failed notifications for {message_suffix}",
             )
 
         except HTTPException:
             raise
         except Exception as e:
-            logger.error(f"Error querying failed notifications for {transaction_id}: {e}")
+            error_detail = (
+                f"transaction: {transaction_id}" if transaction_id else "all failed notifications"
+            )
+            logger.error(f"Error querying failed notifications for {error_detail}: {e}")
             raise HTTPException(
                 status_code=500, detail=f"Failed to query failed notifications: {str(e)}"
             )
 
     def _process_query_result(self, result: Dict[str, Any], success_message: str) -> QueryResult:
-        """處理查詢結果"""
-        if not result.get("success", False):
+        """處理查詢結果的共用邏輯"""
+        try:
+            if not result.get("success", False):
+                error_message = result.get("message", "Query failed")
+                logger.warning(f"Query failed: {error_message}")
+                return QueryResult(success=False, message=error_message, data=[], total_count=0)
+
+            items = result.get("items", [])
+            logger.info(f"Query returned {len(items)} items")
+
+            # 轉換資料項目為 NotificationRecord 對象
+            notifications = []
+
+            for item in items:
+                try:
+                    notification = NotificationRecord(**item)
+                    notifications.append(notification)
+                except Exception as e:
+                    logger.warning(f"Failed to parse notification record: {e}, item: {item}")
+                    continue
+
             return QueryResult(
-                success=False, message=result.get("message", "Query failed"), data=[], total_count=0
+                success=True,
+                data=notifications,
+                message=success_message,
+                total_count=len(notifications),
             )
 
-        # 轉換為領域模型 (API Gateway 返回的是 'items' 字段，不是 'data')
-        items = result.get("items", result.get("data", []))
-        notifications = []
-
-        for item in items:
-            try:
-                notification = NotificationRecord(**item)
-                notifications.append(notification)
-            except Exception as e:
-                logger.warning(f"Failed to parse notification record: {e}, item: {item}")
-                continue
-
-        return QueryResult(
-            success=True,
-            data=notifications,
-            message=success_message,
-            total_count=len(notifications),
-        )
+        except Exception as e:
+            logger.error(f"Error processing query result: {e}")
+            return QueryResult(
+                success=False,
+                message=f"Failed to process query result: {str(e)}",
+                data=[],
+                total_count=0,
+            )
 
 
 # ================================
@@ -286,16 +287,12 @@ class QueryService(QueryPort):
 
 
 # Request/Response 模型
-class UserQueryRequest(BaseModel):
-    user_id: str = Field(..., min_length=1, description="用戶ID")
-
-
-class MarketingQueryRequest(BaseModel):
-    marketing_id: str = Field(..., min_length=1, description="行銷活動ID")
+class TransactionQueryRequest(BaseModel):
+    transaction_id: str = Field(..., min_length=1, description="交易ID")
 
 
 class FailQueryRequest(BaseModel):
-    transaction_id: str = Field(..., min_length=1, description="交易ID")
+    transaction_id: Optional[str] = Field(None, min_length=1, description="交易ID（可選）")
 
 
 # 全局單例實例
@@ -333,9 +330,9 @@ def get_query_service(
 
 # 初始化 FastAPI 應用
 app = FastAPI(
-    title="Query Service ECS Handler",
-    description="CQRS 架構的查詢服務 - Query Side 實現 (ECS版本)",
-    version="3.0.0",
+    title="Query Service API",
+    description="CQRS 查詢服務 API - 專注於高效的交易推播記錄查詢",
+    version="4.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -367,56 +364,61 @@ async def health_check() -> Dict[str, str]:
     }
 
 
-@app.post("/query/user", response_model=QueryResult)
-async def query_user_notifications(
-    request: UserQueryRequest, query_service: QueryService = Depends(get_query_service)
+@app.post("/query/transaction", response_model=QueryResult)
+async def query_transaction_notifications(
+    request: TransactionQueryRequest, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
     """
-    根據 user_id 查詢該用戶最近的推播記錄
+    根據 transaction_id 查詢交易推播記錄
 
-    - **user_id**: 用戶唯一識別碼
+    - **transaction_id**: 交易唯一識別碼
     """
-    logger.info(f"API: Querying notifications for user: {request.user_id}")
+    logger.info(
+        f"API: Querying transaction notifications for transaction: {request.transaction_id}"
+    )
     try:
-        return await query_service.query_user_notifications(request.user_id)
+        return await query_service.query_transaction_notifications(request.transaction_id)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error in user query endpoint: {e}")
+        logger.error(f"Unexpected error in transaction query endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@app.post("/query/marketing", response_model=QueryResult)
-async def query_marketing_notifications(
-    request: MarketingQueryRequest, query_service: QueryService = Depends(get_query_service)
+@app.get("/tx")
+async def get_transaction_notifications_by_id(
+    transaction_id: str = Query(..., min_length=1, description="交易唯一識別碼"),
+    query_service: QueryService = Depends(get_query_service),
 ) -> QueryResult:
     """
-    根據 marketing_id 查詢某活動所觸發的所有推播記錄
+    根據 transaction_id 查詢交易推播記錄 (GET 方法)
 
-    - **marketing_id**: 行銷活動唯一識別碼
+    - **transaction_id**: 交易唯一識別碼
     """
-    logger.info(f"API: Querying notifications for marketing campaign: {request.marketing_id}")
+    logger.info(f"API: GET querying transaction notifications for transaction: {transaction_id}")
     try:
-        return await query_service.query_marketing_notifications(request.marketing_id)
+        return await query_service.query_transaction_notifications(transaction_id)
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Unexpected error in marketing query endpoint: {e}")
+        logger.error(f"Unexpected error in GET transaction query endpoint: {e}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
 @app.post("/query/fail", response_model=QueryResult)
 async def query_failed_notifications(
-    request: FailQueryRequest, query_service: QueryService = Depends(get_query_service)
+    request: Optional[FailQueryRequest] = None,
+    query_service: QueryService = Depends(get_query_service),
 ) -> QueryResult:
     """
-    根據 transaction_id 查詢失敗的推播記錄
+    根據 transaction_id 查詢失敗推播記錄，或查詢所有失敗記錄
 
-    - **transaction_id**: 交易唯一識別碼
+    - **transaction_id**: 交易唯一識別碼（可選，如不提供則查詢所有失敗記錄）
     """
-    logger.info(f"API: Querying failed notifications for transaction: {request.transaction_id}")
+    transaction_id = request.transaction_id if request else None
+    logger.info(f"API: Querying failed notifications for transaction: {transaction_id or 'all'}")
     try:
-        return await query_service.query_failed_notifications(request.transaction_id)
+        return await query_service.query_failed_notifications(transaction_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -424,22 +426,47 @@ async def query_failed_notifications(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@app.get("/fail")
+async def get_failed_notifications(
+    transaction_id: Optional[str] = Query(None, min_length=1, description="交易唯一識別碼（可選）"),
+    query_service: QueryService = Depends(get_query_service),
+) -> QueryResult:
+    """
+    查詢失敗推播記錄 (GET 方法)
+
+    - **transaction_id**: 交易唯一識別碼（可選，如不提供則查詢所有失敗記錄）
+    """
+    logger.info(
+        f"API: GET querying failed notifications for transaction: {transaction_id or 'all'}"
+    )
+    try:
+        return await query_service.query_failed_notifications(transaction_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in GET failed query endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @app.get("/")
 async def root() -> Dict[str, Any]:
-    """根端點"""
+    """
+    API 根端點，提供服務資訊和可用端點清單
+    """
     return {
-        "message": "Query Service ECS Handler",
-        "architecture": "CQRS + Hexagonal Architecture",
-        "version": "3.0.0",
-        "description": "通過 Internal API Gateway 調用 Lambda 的 ECS 查詢服務",
+        "service": "Query Service",
+        "version": "4.0.0",
+        "description": "CQRS 查詢服務 - 專注於高效的交易推播記錄查詢",
+        "status": "healthy",
+        "timestamp": datetime.now(UTC).isoformat(),
         "endpoints": {
-            "health_check": "/health",
-            "user_query": "/query/user",
-            "marketing_query": "/query/marketing",
+            "transaction_query": "/query/transaction",
             "failed_query": "/query/fail",
             "docs": "/docs",
-            "redoc": "/redoc",
+            "health": "/health",
         },
+        "architecture": "Hexagonal Architecture with CQRS",
+        "optimization": "Optimized for transaction_id based primary key queries",
     }
 
 

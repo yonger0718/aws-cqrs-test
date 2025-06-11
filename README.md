@@ -68,7 +68,7 @@
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 核心特色 ��
+### 核心特色
 
 - **🔧 領域模型重構**: 強類型的業務實體和價值對象
 - **📮 端口與適配器**: 清晰的接口分離和依賴反轉
@@ -78,43 +78,32 @@
 
 ## 📁 專案結構
 
-```txt
-📦 aws-cqrs-test/
-├── 📚 docs/                          # 📖 專案文檔
-│   ├── 🧪 testing/                   # 測試指南
-│   ├── 📖 guides/                    # 使用說明
-│   ├── 🏗️ architecture/              # 六邊形架構設計文檔
-│   │   ├── cqrs-hexagonal-design.md  # CQRS + 六邊形設計詳解
-│   │   └── ecs-migration-guide.md    # ECS 遷移指南
-│   ├── 🚀 deployment/                # 部署文檔
-│   │   └── ecs-deployment.md         # ECS 部署指南
-│   ├── 📡 api/                       # API 文檔
-│   │   └── api-changes-v3.md         # V3 API 變更說明
-│   └── 📊 project/                   # 專案總結
-├── 🔧 scripts/                       # 🛠️ 腳本工具
-│   ├── 🧪 testing/                   # 測試腳本
-│   ├── 🔍 queries/                   # 查詢工具
-│   ├── ✅ verification/              # 驗證腳本
-│   └── 🛠️ development/               # 開發工具
-├── 📦 pyproject.toml                 # Poetry 依賴管理配置
-└── 🚀 query-service/                 # 🎯 主要服務
-    ├── eks_handler/                  # 📡 FastAPI 六邊形架構服務 (ECS 容器)
-    │   ├── main.py                   # 六邊形架構實現
-    │   ├── Dockerfile                # ECS 容器配置
-    │   └── __init__.py               # 領域模型導出
-    ├── lambdas/                      # ⚡ AWS Lambda 函數
-    │   ├── query_lambda/             # API Gateway 入口
-    │   ├── query_result_lambda/      # 查詢處理邏輯
-    │   └── stream_processor_lambda/  # CQRS 事件處理器
-    │       └── app.py                # 領域驅動的 Stream 處理
-    ├── tests/                        # 🧪 測試套件
-    ├── infra/                        # 🏗️ 基礎設施
-    │   ├── localstack/               # LocalStack 設定
-    │   └── terraform/                # Terraform 部署配置 (ECS)
-    └── docker-compose.yml            # 本地開發環境
+```
+aws-hexagon-notify-test/
+├── query-service/              # 查詢服務主要代碼
+│   ├── eks_handler/           # EKS Handler 服務
+│   ├── lambdas/               # Lambda 函數
+│   ├── tests/                 # 測試文件
+│   └── infra/                 # 基礎設施配置
+├── scripts/                   # 各種工具腳本
+│   ├── ci-cd/                # CI/CD 腳本
+│   ├── deployment/           # 部署腳本
+│   ├── development/          # 開發工具
+│   ├── infrastructure/       # 基礎設施管理
+│   ├── testing/              # 測試腳本
+│   ├── queries/              # 查詢工具
+│   └── verification/         # 驗證腳本
+├── docs/                      # 專案文檔
+│   ├── api/                  # API 文檔
+│   ├── architecture/         # 架構設計
+│   ├── development/          # 開發指南
+│   ├── deployment/           # 部署指南
+│   └── testing/              # 測試指南
+├── .github/workflows/         # GitHub Actions CI/CD
+└── pyproject.toml            # Poetry 依賴管理
 ```
 
-## 🚀 快速開始
+## 🚀 快速開始 (V4 版本)
 
 ### ✅ **步驟一: 環境準備**
 
@@ -178,12 +167,17 @@ poetry run pytest
 ./scripts/queries/simple_query.sh --all
 ```
 
-### 📖 **步驟六: API 文檔查看**
+### 📖 **步驟六: API 文檔查看 (V4 端點)**
 
 ```bash
 # 啟動服務後訪問 API 文檔
 # Swagger UI: http://localhost:8000/docs
 # ReDoc: http://localhost:8000/redoc
+
+# V4 核心端點測試
+curl "http://localhost:8000/tx?transaction_id=tx_001"
+curl "http://localhost:8000/fail?transaction_id=tx_002"
+curl "http://localhost:8000/fail"  # 查詢所有失敗記錄
 ```
 
 ## 📋 推薦測試驗證順序
@@ -196,8 +190,8 @@ poetry install
 ./scripts/verification/verify_system.sh
 
 # 2. 服務管理
-./scripts/restart_services.sh
-./scripts/fix_api_gateway.sh
+./scripts/deployment/restart_services.sh
+./scripts/infrastructure/fix_api_gateway.sh
 
 # 3. 基本功能驗證
 ./scripts/testing/quick_test.sh
@@ -351,8 +345,8 @@ poetry run pytest tests/ -v
 ### 🛠️ **開發工具**
 
 ```bash
-./scripts/restart_services.sh        # 服務重啟
-./scripts/fix_api_gateway.sh         # API Gateway 修復
+./scripts/deployment/restart_services.sh        # 服務重啟
+./scripts/infrastructure/fix_api_gateway.sh         # API Gateway 修復
 python scripts/development/simulate_writes.py  # 資料模擬
 ```
 

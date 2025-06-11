@@ -212,20 +212,22 @@ class TestInternalAPIAdapterIntegration:
             "total_count": 0,
         }
 
-        # 設定 post 方法為 AsyncMock
-        mock_client_instance.post = AsyncMock(return_value=mock_response)
+        # 設定 get 方法為 AsyncMock
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
         # 測試調用
-        result = await internal_api_adapter.invoke_query_api("user", {"user_id": "test-user"})
+        result = await internal_api_adapter.invoke_query_api(
+            "transaction", {"transaction_id": "test-txn"}
+        )
 
         # 驗證結果
         assert result["success"] is True
         assert "items" in result
 
         # 驗證調用參數
-        mock_client_instance.post.assert_called_once()
-        call_args = mock_client_instance.post.call_args
-        assert "/query/user" in str(call_args)
+        mock_client_instance.get.assert_called_once()
+        call_args = mock_client_instance.get.call_args
+        assert "/tx" in str(call_args)
 
     @patch("httpx.AsyncClient")
     async def test_invoke_query_api_http_error(
@@ -243,12 +245,14 @@ class TestInternalAPIAdapterIntegration:
         mock_response.text = "Internal Server Error"
         mock_response.json.return_value = {"error": "Server error"}
 
-        # 設定 post 方法為 AsyncMock
-        mock_client_instance.post = AsyncMock(return_value=mock_response)
+        # 設定 get 方法為 AsyncMock
+        mock_client_instance.get = AsyncMock(return_value=mock_response)
 
         # 測試調用應該拋出 HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await internal_api_adapter.invoke_query_api("user", {"user_id": "test-user"})
+            await internal_api_adapter.invoke_query_api(
+                "transaction", {"transaction_id": "test-txn"}
+            )
 
         assert exc_info.value.status_code == 502
         assert "Internal API Gateway error" in str(exc_info.value.detail)
@@ -264,11 +268,13 @@ class TestInternalAPIAdapterIntegration:
         mock_httpx_client.return_value.__aexit__ = AsyncMock(return_value=None)
 
         # 模擬超時錯誤，設定 post 方法為 AsyncMock 並拋出異常
-        mock_client_instance.post = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
+        mock_client_instance.get = AsyncMock(side_effect=httpx.TimeoutException("Request timeout"))
 
         # 測試調用應該拋出 HTTPException
         with pytest.raises(HTTPException) as exc_info:
-            await internal_api_adapter.invoke_query_api("user", {"user_id": "test-user"})
+            await internal_api_adapter.invoke_query_api(
+                "transaction", {"transaction_id": "test-txn"}
+            )
 
         assert exc_info.value.status_code == 504
         assert "timed out" in str(exc_info.value.detail)
@@ -299,241 +305,99 @@ class TestQueryServiceIntegration:
         """建立查詢服務"""
         return QueryService(mock_internal_api_adapter)
 
-    async def test_query_user_notifications_success(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
+    # Test direct service method calls
+    async def test_query_service_transaction_integration(
+        self, integration_client: QueryService
     ) -> None:
-        """測試用戶推播查詢成功"""
-        # 設定模擬響應 - 使用 AsyncMock 返回協程
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            return_value={
-                "success": True,
-                "items": [
-                    {
-                        "user_id": "test-user",
-                        "transaction_id": "test-txn",
-                        "created_at": 1640995200000,
-                        "notification_title": "測試推播",
-                        "status": "SENT",
-                        "platform": "IOS",
-                        "ap_id": "mobile-app-001",
-                    }
-                ],
-                "message": "Query successful",
-                "total_count": 1,
-            }
-        )
-
-        # 執行查詢
-        result = await query_service.query_user_notifications("test-user")
-
-        # 驗證結果
-        assert result.success is True
-        assert len(result.data) == 1
-        assert result.data[0].user_id == "test-user"
-        assert result.total_count == 1
-
-        # 驗證 Internal API Gateway 調用
-        mock_internal_api_adapter.invoke_query_api.assert_called_once_with(
-            "user", {"user_id": "test-user"}
-        )
-
-    async def test_query_marketing_notifications_success(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
-    ) -> None:
-        """測試行銷活動推播查詢成功"""
-        # 設定模擬響應 - 使用 AsyncMock
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            return_value={
-                "success": True,
-                "items": [
-                    {
-                        "user_id": "user1",
-                        "transaction_id": "txn1",
-                        "created_at": 1640995200000,
-                        "marketing_id": "campaign-001",
-                        "notification_title": "行銷推播",
-                        "status": "SENT",
-                        "platform": "ANDROID",
-                        "ap_id": "mobile-app-002",
-                    }
-                ],
-                "message": "Query successful",
-                "total_count": 1,
-            }
-        )
-
-        # 執行查詢
-        result = await query_service.query_marketing_notifications("campaign-001")
-
-        # 驗證結果
-        assert result.success is True
-        assert len(result.data) == 1
-        assert result.data[0].marketing_id == "campaign-001"
-
-        # 驗證 Internal API Gateway 調用
-        mock_internal_api_adapter.invoke_query_api.assert_called_once_with(
-            "marketing", {"marketing_id": "campaign-001"}
-        )
-
-    async def test_query_failed_notifications_success(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
-    ) -> None:
-        """測試失敗推播查詢成功"""
-        # 設定模擬響應 - 使用 AsyncMock
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            return_value={
-                "success": True,
-                "items": [
-                    {
-                        "user_id": "user1",
-                        "transaction_id": "failed-txn",
-                        "created_at": 1640995200000,
-                        "notification_title": "失敗推播",
-                        "status": "FAILED",
-                        "platform": "IOS",
-                        "error_msg": "Device token invalid",
-                        "ap_id": "mobile-app-001",
-                    }
-                ],
-                "message": "Query successful",
-                "total_count": 1,
-            }
-        )
-
-        # 執行查詢
-        result = await query_service.query_failed_notifications("failed-txn")
-
-        # 驗證結果
-        assert result.success is True
-        assert len(result.data) == 1
-        assert result.data[0].transaction_id == "failed-txn"
-        assert result.data[0].status == "FAILED"
-
-        # 驗證 Internal API Gateway 調用
-        mock_internal_api_adapter.invoke_query_api.assert_called_once_with(
-            "fail", {"transaction_id": "failed-txn"}
-        )
-
-    async def test_query_user_notifications_http_error(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
-    ) -> None:
-        """測試用戶推播查詢 HTTP 錯誤"""
-        # 模擬 HTTPException - 使用 AsyncMock
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            side_effect=HTTPException(status_code=502, detail="Internal API Gateway error")
-        )
-
-        # 執行查詢應該拋出 HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await query_service.query_user_notifications("test-user")
-
-        assert exc_info.value.status_code == 502
-
-    async def test_query_user_notifications_general_error(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
-    ) -> None:
-        """測試用戶推播查詢一般錯誤"""
-        # 模擬一般錯誤 - 使用 AsyncMock
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            side_effect=Exception("Network error")
-        )
-
-        # 執行查詢應該拋出 HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await query_service.query_user_notifications("test-user")
-
-        assert exc_info.value.status_code == 500
-        assert "Failed to query user notifications" in str(exc_info.value.detail)
-
-    async def test_query_marketing_notifications_error(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
-    ) -> None:
-        """測試行銷活動推播查詢錯誤"""
-        # 模擬錯誤 - 使用 AsyncMock
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            side_effect=Exception("Database error")
-        )
-
-        # 執行查詢應該拋出 HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await query_service.query_marketing_notifications("campaign-001")
-
-        assert exc_info.value.status_code == 500
-        assert "Failed to query marketing notifications" in str(exc_info.value.detail)
-
-    async def test_query_failed_notifications_error(
-        self, query_service: QueryService, mock_internal_api_adapter: Mock
-    ) -> None:
-        """測試失敗推播查詢錯誤"""
-        # 模擬錯誤 - 使用 AsyncMock
-        mock_internal_api_adapter.invoke_query_api = AsyncMock(
-            side_effect=Exception("Service unavailable")
-        )
-
-        # 執行查詢應該拋出 HTTPException
-        with pytest.raises(HTTPException) as exc_info:
-            await query_service.query_failed_notifications("failed-txn")
-
-        assert exc_info.value.status_code == 500
-        assert "Failed to query failed notifications" in str(exc_info.value.detail)
-
-    def test_process_query_result_success(self, query_service: QueryService) -> None:
-        """測試 _process_query_result 成功情況"""
-        result_data = {
-            "success": True,
-            "items": [
-                {
-                    "user_id": "test-user",
-                    "transaction_id": "test-txn",
-                    "created_at": 1640995200000,
-                    "notification_title": "測試推播",
-                    "status": "SENT",
-                    "platform": "IOS",
-                    "ap_id": "mobile-app-001",
+        """測試交易查詢服務整合"""
+        # 使用 patch 來設置 mock 返回值
+        with patch.object(
+            integration_client.internal_api_adapter,
+            "invoke_query_api",
+            new=AsyncMock(
+                return_value={
+                    "success": True,
+                    "items": [
+                        {
+                            "transaction_id": "test-txn-1",
+                            "token": "device-token-1",
+                            "platform": "IOS",
+                            "notification_title": "Test Notification 1",
+                            "notification_body": "Test body 1",
+                            "status": "DELIVERED",
+                            "send_ts": 1640995200,
+                            "delivered_ts": 1640995205,
+                            "ap_id": "app-1",
+                            "created_at": 1640995200,
+                        }
+                    ],
                 }
-            ],
-        }
+            ),
+        ):
+            # 測試存在的記錄
+            result = await integration_client.query_transaction_notifications("test-txn-1")
+            assert result.success is True
+            assert len(result.data) == 1
+            assert result.data[0].transaction_id == "test-txn-1"
 
-        result = query_service._process_query_result(result_data, "Test success message")
-
-        assert result.success is True
-        assert len(result.data) == 1
-        assert result.message == "Test success message"
-        assert result.total_count == 1
-
-    def test_process_query_result_failure(self, query_service: QueryService) -> None:
-        """測試 _process_query_result 失敗情況"""
-        result_data = {"success": False, "message": "Query failed"}
-
-        result = query_service._process_query_result(result_data, "Success message")
-
-        assert result.success is False
-        assert result.message == "Query failed"
-        assert len(result.data) == 0
-        assert result.total_count == 0
-
-    def test_process_query_result_with_data_field(self, query_service: QueryService) -> None:
-        """測試 _process_query_result 使用 data 字段"""
-        result_data = {
-            "success": True,
-            "data": [
-                {
-                    "user_id": "test-user",
-                    "transaction_id": "test-txn",
-                    "created_at": 1640995200000,
-                    "notification_title": "測試推播",
-                    "status": "SENT",
-                    "platform": "IOS",
-                    "ap_id": "mobile-app-001",
+    async def test_query_service_failed_integration(self, integration_client: QueryService) -> None:
+        """測試失敗查詢服務整合"""
+        # 使用 patch 來設置 mock 返回值
+        with patch.object(
+            integration_client.internal_api_adapter,
+            "invoke_query_api",
+            new=AsyncMock(
+                return_value={
+                    "success": True,
+                    "items": [
+                        {
+                            "transaction_id": "test-txn-failed",
+                            "token": "device-token-2",
+                            "platform": "ANDROID",
+                            "notification_title": "Test Notification 2",
+                            "notification_body": "Test body 2",
+                            "status": "FAILED",
+                            "send_ts": 1640995300,
+                            "failed_ts": 1640995305,
+                            "ap_id": "app-2",
+                            "created_at": 1640995300,
+                        }
+                    ],
                 }
-            ],
-        }
+            ),
+        ):
+            # 測試失敗的記錄
+            result = await integration_client.query_failed_notifications("test-txn-failed")
+            assert result.success is True
+            assert len(result.data) == 1
+            assert result.data[0].status == "FAILED"
 
-        result = query_service._process_query_result(result_data, "Test success message")
+    # Test error handling
+    async def test_query_service_timeout_handling(self, integration_client: QueryService) -> None:
+        """測試超時處理"""
+        # 模擬超時情況
+        with patch.object(
+            integration_client.internal_api_adapter,
+            "invoke_query_api",
+            side_effect=HTTPException(status_code=504, detail="Gateway timeout"),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await integration_client.query_transaction_notifications("test-txn")
+            assert exc_info.value.status_code == 504
 
-        assert result.success is True
-        assert len(result.data) == 1
-        assert result.total_count == 1
+    async def test_query_service_service_unavailable(
+        self, integration_client: QueryService
+    ) -> None:
+        """測試服務不可用處理"""
+        # 模擬服務不可用
+        with patch.object(
+            integration_client.internal_api_adapter,
+            "invoke_query_api",
+            side_effect=HTTPException(status_code=503, detail="Service unavailable"),
+        ):
+            with pytest.raises(HTTPException) as exc_info:
+                await integration_client.query_transaction_notifications("test-txn")
+            assert exc_info.value.status_code == 503
 
 
 @pytest.mark.integration
@@ -559,8 +423,8 @@ class TestFastAPIEndpoints:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["message"] == "Query Service ECS Handler"
-        assert data["version"] == "3.0.0"
+        assert data["service"] == "Query Service"
+        assert data["version"] == "4.0.0"
         assert "endpoints" in data
 
 

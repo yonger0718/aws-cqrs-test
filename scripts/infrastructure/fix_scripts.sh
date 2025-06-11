@@ -55,8 +55,8 @@ else
 fi
 
 echo -e "\n${YELLOW}3. 檢查環境變數設置...${NC}"
-if [ -f "scripts/setup_env.sh" ]; then
-    source scripts/setup_env.sh > /dev/null 2>&1
+if [ -f "scripts/development/setup_env.sh" ]; then
+source scripts/development/setup_env.sh > /dev/null 2>&1
     echo -e "${GREEN}✅ 環境變數設置腳本已載入${NC}"
 else
     echo -e "${RED}❌ 環境變數設置腳本不存在${NC}"
@@ -144,13 +144,13 @@ source scripts/setup_env.sh
 ## 部署腳本
 ```bash
 # 部署 API Gateway 代理
-./scripts/deploy_api_gateway_proxy.sh
+./scripts/deployment/deploy_api_gateway_proxy.sh
 
 # 修復 API Gateway
-./scripts/fix_api_gateway.sh
+./scripts/infrastructure/fix_api_gateway.sh
 
 # 重啟服務
-./scripts/restart_services.sh
+./scripts/deployment/restart_services.sh
 ```
 
 ## 故障排除

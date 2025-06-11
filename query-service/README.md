@@ -1,281 +1,328 @@
-# Query Service - CQRS 查詢服務
+# Query Service v4
 
-本目錄包含 CQRS 架構中的查詢端實現，基於六邊形架構模式。
+**CQRS 查詢服務 - 專注於高效的交易推播記錄查詢**
 
-## 🏗️ 服務概述
+## 概述
 
-查詢服務負責處理所有的讀取操作，通過 API Gateway 接收請求，並從專門的查詢數據表中檢索數據。
+Query Service v4 是基於 CQRS (Command Query Responsibility Segregation) 架構模式的查詢服務，專門用於查詢推播通知記錄。本版本專注於以 `transaction_id` 為主鍵的高效查詢操作。
 
-```txt
-用戶請求 → API Gateway → Query Lambda → ECS Handler → Internal API Gateway → Query Result Lambda → Query Table
+### 架構特點
+
+- **六邊形架構 (Hexagonal Architecture)**: 清晰分離領域邏輯與基礎設施
+- **CQRS 模式**: 分離讀寫操作，優化查詢效能
+- **主鍵查詢優化**: 使用 `transaction_id` 作為主鍵，提供最佳查詢效能
+- **事件驅動**: 通過 DynamoDB Stream 實現資料同步
+
+## v4 新特性
+
+### 🎯 核心改進
+
+1. **簡化端點**: 移除低效的 scan 操作，只保留高效的主鍵查詢
+2. **效能優化**: 所有查詢都基於 `transaction_id` 主鍵
+3. **Schema 優化**: 新的資料結構更適合實際使用場景
+4. **API 簡化**: 從 4 個端點簡化為 2 個核心端點
+
+### 📋 可用端點
+
+| 端點 | 方法 | 功能 | 查詢方式 |
+|------|------|------|----------|
+| `/tx` | GET | 交易推播記錄查詢 | 主鍵查詢 (`get_item`) |
+| `/query/transaction` | POST | 交易推播記錄查詢 | 主鍵查詢 (`get_item`) |
+| `/fail` | GET | 失敗推播記錄查詢 | 主鍵查詢或全表掃描 |
+| `/query/fail` | POST | 失敗推播記錄查詢 | 主鍵查詢或全表掃描 |
+
+### 🗂️ 資料 Schema (v4)
+
+```json
+{
+  "transaction_id": "txn-12345",           // 主鍵
+  "token": "device-token-abc123",
+  "platform": "IOS|ANDROID|WEB",
+  "notification_title": "推播標題",
+  "notification_body": "推播內容",         // 必填欄位
+  "status": "SENT|DELIVERED|FAILED",
+  "send_ts": 1640995200,
+  "delivered_ts": 1640995210,              // 可選
+  "failed_ts": 1640995220,                 // 可選
+  "ap_id": "mobile-app-001",
+  "created_at": 1640995200
+}
 ```
 
-## 📁 目錄結構
+## API 使用說明
 
-```txt
-query-service/
-├── eks_handler/                      # FastAPI 應用（六邊形架構，ECS 容器）
-│   ├── main.py                       # 主應用程序
-│   ├── Dockerfile                    # ECS 容器配置
-│   └── requirements.txt              # 服務依賴
-├── lambdas/                          # AWS Lambda 函數
-│   ├── query_lambda/                 # API Gateway 入口
-│   ├── query_result_lambda/          # 查詢處理邏輯（透過 Internal API Gateway）
-│   └── stream_processor_lambda/      # DynamoDB Stream 處理
-├── tests/                            # 測試套件
-│   ├── test_eks_handler.py           # 單元測試（HTTP 通信架構）
-│   └── test_integration.py           # 整合測試
-├── infra/                            # 基礎設施配置
-│   ├── localstack/setup.sh          # LocalStack 初始化
-│   └── terraform/                    # ECS/Terraform 部署配置
-├── docker-compose.yml               # 本地開發環境
-└── requirements.txt                  # Lambda 依賴
+### 1. 交易推播記錄查詢
+
+#### GET 方法 (推薦)
+**端點**: `GET /tx?transaction_id=<id>`
+
+**請求**:
+```bash
+curl "http://localhost:8000/tx?transaction_id=txn-12345"
 ```
 
-## 🗄️ 資料表設計
+#### POST 方法
+**端點**: `POST /query/transaction`
 
-### Command Table (command-records) - 寫入側
+**請求**:
+```json
+{
+  "transaction_id": "txn-12345"
+}
+```
 
-| 欄位名稱             | 類型       | 說明                      |
-| -------------------- | ---------- | ------------------------- |
-| `transaction_id`     | String (S) | Partition Key，交易 ID    |
-| `created_at`         | Number (N) | Sort Key，毫秒時間戳      |
-| `user_id`            | String (S) | 用戶識別碼                |
-| `marketing_id`       | String (S) | 活動代碼                  |
-| `ap_id`              | String (S) | 服務來源 AP ID            |
-| `notification_title` | String (S) | 通知標題                  |
-| `status`             | String (S) | SENT / DELIVERED / FAILED |
-| `platform`           | String (S) | IOS / ANDROID / WEBPUSH   |
-| `device_token`       | String (S) | 設備推播令牌              |
-| `payload`            | String (S) | 推播內容 JSON             |
-| `error_msg`          | String (S) | 失敗原因（可選）          |
+**回應**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "transaction_id": "txn-12345",
+      "token": "device-token-abc123",
+      "platform": "IOS",
+      "notification_title": "Payment Confirmation",
+      "notification_body": "Your payment has been processed",
+      "status": "DELIVERED",
+      "send_ts": 1640995200,
+      "delivered_ts": 1640995210,
+      "ap_id": "payment-service",
+      "created_at": 1640995200
+    }
+  ],
+  "message": "Successfully retrieved notifications for transaction: txn-12345",
+  "total_count": 1
+}
+```
 
-**特色**: 啟用 DynamoDB Stream，支援 NEW_AND_OLD_IMAGES
+### 2. 失敗推播記錄查詢
 
-### Query Table (notification-records) - 查詢側
+#### GET 方法 (推薦)
 
-| 欄位名稱             | 類型       | 說明                               |
-| -------------------- | ---------- | ---------------------------------- |
-| `user_id`            | String (S) | Partition Key                      |
-| `created_at`         | Number (N) | Sort Key，毫秒時間戳，支援倒序查詢 |
-| `transaction_id`     | String (S) | 交易 ID                            |
-| `marketing_id`       | String (S) | 活動代碼                           |
-| `ap_id`              | String (S) | 服務來源 AP ID                     |
-| `notification_title` | String (S) | 通知標題                           |
-| `status`             | String (S) | SENT / DELIVERED / FAILED          |
-| `platform`           | String (S) | IOS / ANDROID / WEBPUSH            |
-| `error_msg`          | String (S) | 失敗原因（可選）                   |
+**查詢所有失敗記錄**:
+```bash
+curl "http://localhost:8000/fail"
+```
 
-**GSI 索引**:
+**查詢特定交易的失敗記錄**:
+```bash
+curl "http://localhost:8000/fail?transaction_id=txn-67890"
+```
 
-- `marketing_id-index`: 根據活動查詢
-- `transaction_id-status-index`: 根據交易狀態查詢
+#### POST 方法
 
-## 🚀 本地開發
+**查詢所有失敗記錄**:
+```json
+{}
+```
 
-### 使用 Poetry 管理依賴
+**查詢特定交易的失敗記錄**:
+```json
+{
+  "transaction_id": "txn-67890"
+}
+```
+
+**回應 (單一失敗記錄)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "transaction_id": "txn-67890",
+      "token": "invalid-device-token",
+      "platform": "ANDROID",
+      "notification_title": "Login Alert",
+      "notification_body": "New login detected",
+      "status": "FAILED",
+      "send_ts": 1640995400,
+      "failed_ts": 1640995410,
+      "ap_id": "auth-service",
+      "created_at": 1640995400
+    }
+  ],
+  "message": "Successfully retrieved failed notifications for transaction: txn-67890",
+  "total_count": 1
+}
+```
+
+**回應 (所有失敗記錄)**:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "transaction_id": "txn-failed-001",
+      "status": "FAILED",
+      "notification_title": "Account Alert",
+      // ... 其他欄位
+    },
+    {
+      "transaction_id": "txn-failed-002",
+      "status": "FAILED",
+      "notification_title": "Login Notification",
+      // ... 其他欄位
+    }
+  ],
+  "message": "Successfully retrieved failed notifications for all failed notifications",
+  "total_count": 2
+}
+```
+
+## 架構圖
+
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        C[Client Application]
+    end
+
+    subgraph "API Gateway"
+        AG[API Gateway]
+    end
+
+    subgraph "Query Lambda"
+        QL[Query Lambda<br/>業務路由]
+    end
+
+    subgraph "EKS Fargate"
+        EKS[EKS Handler<br/>業務邏輯]
+    end
+
+    subgraph "Query Result Lambda"
+        QRL[Query Result Lambda<br/>資料查詢]
+    end
+
+    subgraph "Database"
+        QDB[(notification-records<br/>Query Database)]
+    end
+
+    C --> AG
+    AG --> QL
+    QL --> EKS
+    EKS --> AG
+    AG --> QRL
+    QRL --> QDB
+```
+
+## 效能特點
+
+### 🚀 查詢效能
+
+- **交易查詢**: `O(1)` - 使用主鍵直接查詢
+- **特定失敗查詢**: `O(1)` - 主鍵查詢 + 狀態過濾
+- **所有失敗查詢**: `O(n)` - 全表掃描 (建議加入 GSI 優化)
+- **讀取單位**: 交易查詢通常只消耗 1 RCU，失敗查詢掃描會消耗較多 RCU
+- **延遲**: 交易查詢 < 10ms，失敗查詢掃描取決於表格大小
+
+### 📊 成本考量
+
+- **交易查詢**: 成本極低，使用主鍵查詢
+- **特定失敗查詢**: 成本極低，使用主鍵查詢
+- **所有失敗查詢**: 成本較高，建議：
+  - 生產環境建立 `status-created_at` GSI
+  - 限制查詢頻率
+  - 考慮加入分頁機制
+
+## 開發與測試
+
+### 本地開發
 
 ```bash
-# 安裝專案依賴（在根目錄執行）
+# 安裝依賴
 poetry install
 
-# 進入虛擬環境
-poetry shell
-
-# 執行測試
-poetry run pytest tests/ -v --cov
-```
-
-### 🐳 Docker 化部署（推薦）
-
-我們提供了完整的 Docker 化部署解決方案，包括容器化的 Lambda 函數：
-
-```bash
-# 一鍵啟動完整環境（包含 Lambda Docker 部署）
-./deploy_docker.sh start
-
-# 構建 Lambda Docker 映像
-./deploy_docker.sh build
-
-# 部署 Lambda 函數
-./deploy_docker.sh deploy
-
-# 檢查服務狀態
-./deploy_docker.sh status
-
-# 執行集成測試
-./deploy_docker.sh test
-
-# 查看服務日誌
-./deploy_docker.sh logs
-
-# 停止所有服務
-./deploy_docker.sh stop
-
-# 清理所有資源
-./deploy_docker.sh clean
-```
-
-#### Lambda Docker 映像結構
-
-每個 Lambda 函數都有自己的 Dockerfile：
-
-```txt
-lambdas/
-├── docker-compose.lambda.yml         # Lambda 映像構建配置
-├── deploy_docker_lambdas.sh          # Docker 部署腳本
-├── stream_processor_lambda/
-│   ├── Dockerfile                    # 🐳 Stream 處理器容器
-│   ├── .dockerignore                 # Docker 忽略檔案
-│   └── app.py
-├── query_lambda/
-│   ├── Dockerfile                    # 🐳 查詢入口容器
-│   ├── .dockerignore
-│   └── app.py
-└── query_result_lambda/
-    ├── Dockerfile                    # 🐳 查詢結果容器
-    ├── .dockerignore
-    └── app.py
-```
-
-### 傳統 Docker Compose 部署
-
-```bash
 # 啟動服務
-docker compose up -d
+poetry run uvicorn eks_handler.main:app --reload --port 8000
 
-# 檢查服務狀態
-docker compose ps
+# 運行測試
+poetry run pytest -v
 
-# 查看日誌
-docker compose logs ecs-handler
+# 程式碼檢查
+pre-commit run --all-files
 ```
 
-### LocalStack 初始化
-
-#### Docker 版本（推薦）
+### LocalStack 測試
 
 ```bash
-# 使用 Docker 化的 Lambda 部署
-docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup_docker.sh
+# 啟動 LocalStack
+docker-compose up -d localstack
+
+# 設置測試環境
+./infra/localstack/setup.sh
+
+# 測試交易查詢 (GET)
+curl "http://localhost:8000/tx?transaction_id=txn-test-001"
+
+# 測試交易查詢 (POST)
+curl -X POST http://localhost:8000/query/transaction \
+  -H "Content-Type: application/json" \
+  -d '{"transaction_id": "txn-test-001"}'
+
+# 測試所有失敗記錄查詢 (GET)
+curl "http://localhost:8000/fail"
+
+# 測試特定失敗記錄查詢 (GET)
+curl "http://localhost:8000/fail?transaction_id=txn-failed-001"
+
+# 測試失敗記錄查詢 (POST)
+curl -X POST http://localhost:8000/query/fail \
+  -H "Content-Type: application/json" \
+  -d '{"transaction_id": "txn-failed-001"}'
 ```
 
-#### 傳統版本
+### 日誌追蹤
 
-```bash
-# 使用 ZIP 包部署
-docker exec -it localstack-query-service /etc/localstack/init/ready.d/setup.sh
+現在所有端點都提供詳細的日誌追蹤：
+
+```json
+{
+  "timestamp": "2024-01-15T10:30:00Z",
+  "level": "INFO",
+  "service": "query-lambda",
+  "version": "4.0.0",
+  "transaction_id": "txn-12345",
+  "operation": "query_transaction",
+  "method": "GET",
+  "path": "/tx",
+  "duration_ms": 15,
+  "status": "success",
+  "aws_request_id": "abc-123-def"
+}
 ```
 
-## 📋 API 端點
+## 版本歷史
 
-| 端點               | 方法 | 說明               |
-| ------------------ | ---- | ------------------ |
-| `/query/user`      | GET  | 查詢用戶推播記錄   |
-| `/query/marketing` | GET  | 查詢活動推播統計   |
-| `/query/fail`      | GET  | 查詢失敗推播記錄   |
-| `/health`          | GET  | 健康檢查           |
-| `/docs`            | GET  | API 文檔 (Swagger) |
+### v4.0.0 (當前版本)
+- ✅ 簡化端點至 2 個核心查詢功能
+- ✅ 支援 GET 和 POST 兩種方法
+- ✅ 主鍵查詢優化，提升效能
+- ✅ 失敗查詢支援全表掃描和特定交易查詢
+- ✅ 新的資料 Schema 結構
+- ✅ 詳細的日誌追蹤功能
+- ✅ 移除低效的不必要 scan 操作
 
-### 查詢參數示例
+### v3.0.0
+- 支援 4 種查詢類型
+- EKS Fargate 部署
+- 完整的六邊形架構
 
-```bash
-# 查詢用戶推播記錄
-GET /query/user?user_id=test_user_001&limit=10
+### v2.0.0
+- 引入 CQRS 架構
+- DynamoDB Stream 整合
 
-# 查詢活動推播記錄
-GET /query/marketing?marketing_id=campaign_2024&limit=20
+### v1.0.0
+- 基礎查詢服務
+- Lambda 單體架構
 
-# 查詢失敗記錄
-GET /query/fail?transaction_id=tx_002
-```
+## 技術棧
 
-## 🧪 測試
+- **後端**: Python 3.12, FastAPI, AWS Lambda Powertools
+- **資料庫**: Amazon DynamoDB
+- **部署**: AWS EKS Fargate, AWS Lambda
+- **監控**: CloudWatch, X-Ray
+- **測試**: pytest, LocalStack
+- **CI/CD**: GitHub Actions, pre-commit
 
-### 單元測試
+## 授權
 
-```bash
-# 執行所有測試
-poetry run pytest
-
-# 執行特定測試文件
-poetry run pytest tests/test_eks_handler.py -v
-
-# 生成覆蓋率報告
-poetry run pytest --cov=eks_handler --cov-report=html
-```
-
-### 整合測試
-
-```bash
-# 確保服務已啟動
-docker compose up -d
-
-# 執行整合測試
-poetry run pytest tests/test_integration.py -v
-```
-
-## 🔧 開發工具
-
-### 代碼格式化
-
-```bash
-# 使用 Black 格式化代碼
-poetry run black eks_handler/
-
-# 使用 isort 整理 import
-poetry run isort eks_handler/
-```
-
-### 類型檢查
-
-```bash
-# 使用 mypy 進行類型檢查
-poetry run mypy eks_handler/
-```
-
-### 預提交鉤子
-
-```bash
-# 安裝 pre-commit 鉤子
-poetry run pre-commit install
-
-# 手動執行所有檢查
-poetry run pre-commit run --all-files
-```
-
-## 🔍 故障排除
-
-### 常見問題
-
-1. **LocalStack 連接失敗**
-
-   ```bash
-   # 檢查 LocalStack 狀態
-   docker-compose logs localstack
-
-   # 重啟 LocalStack
-   docker-compose restart localstack
-   ```
-
-2. **依賴安裝問題**
-
-   ```bash
-   # 清理並重新安裝
-   poetry env remove --all
-   poetry install
-   ```
-
-3. **API Gateway 配置問題**
-
-   ```bash
-   # 使用根目錄的修復腳本
-   cd .. && ./scripts/fix_api_gateway.sh
-   ```
-
-## 📖 相關文檔
-
-- [主專案文檔](../README.md)
-- [架構設計文檔](../docs/architecture/)
-- [測試指南](../docs/testing/)
-- [部署指南](../docs/deployment/)
+本專案使用 MIT 授權條款。

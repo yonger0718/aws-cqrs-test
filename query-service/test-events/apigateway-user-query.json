@@ -1,0 +1,56 @@
+{
+  "version": "2.0",
+  "routeKey": "GET /user",
+  "rawPath": "/user",
+  "rawQueryString": "user_id=user-123",
+  "cookies": [],
+  "headers": {
+    "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+    "accept-encoding": "gzip, deflate, br",
+    "accept-language": "en-US,en;q=0.5",
+    "content-length": "0",
+    "host": "notification-api.example.com",
+    "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:85.0) Gecko/20100101 Firefox/85.0",
+    "x-amzn-trace-id": "Root=1-61759a5e-1234567890abcdef",
+    "x-forwarded-for": "192.168.1.1",
+    "x-forwarded-port": "443",
+    "x-forwarded-proto": "https"
+  },
+  "queryStringParameters": {
+    "user_id": "user-123"
+  },
+  "requestContext": {
+    "accountId": "123456789012",
+    "apiId": "1234567890",
+    "authentication": null,
+    "authorizer": {
+      "iam": {
+        "accessKey": "AKIA...",
+        "accountId": "123456789012",
+        "callerId": "AIDA...",
+        "cognitoIdentity": null,
+        "principalOrgId": null,
+        "type": "IAM",
+        "userId": "AIDA...",
+        "userArn": "arn:aws:iam::123456789012:user/example-user"
+      }
+    },
+    "domainName": "notification-api.example.com",
+    "domainPrefix": "notification-api",
+    "http": {
+      "method": "GET",
+      "path": "/user",
+      "protocol": "HTTP/1.1",
+      "sourceIp": "192.168.1.1",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:85.0) Gecko/20100101 Firefox/85.0"
+    },
+    "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
+    "routeKey": "GET /user",
+    "stage": "$default",
+    "time": "19/Nov/2024:10:00:00 +0000",
+    "timeEpoch": 1732000000000
+  },
+  "pathParameters": null,
+  "isBase64Encoded": false,
+  "stageVariables": null
+}

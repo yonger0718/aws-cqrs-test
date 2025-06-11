@@ -1,0 +1,13 @@
+{
+  "version": "0",
+  "id": "cdc73f9d-aea9-11e3-9d5a-835b769c0d9c",
+  "detail-type": "Scheduled Event",
+  "source": "aws.events",
+  "account": "123456789012",
+  "time": "2024-11-19T10:00:00Z",
+  "region": "ap-southeast-1",
+  "detail": {},
+  "resources": [
+    "arn:aws:events:ap-southeast-1:123456789012:rule/notification-daily-report"
+  ]
+}

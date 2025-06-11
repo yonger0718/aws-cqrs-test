@@ -31,7 +31,7 @@ RUN groupadd --gid 1000 appgroup && \
 
 # 安裝運行時依賴（僅健康檢查需要的 curl）
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl=7 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 設置工作目錄

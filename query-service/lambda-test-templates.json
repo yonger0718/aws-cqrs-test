@@ -1,0 +1,772 @@
+{
+  "stream_processor_lambda": {
+    "description": "DynamoDB Stream 處理器 Lambda 測試模板",
+    "test_cases": [
+      {
+        "name": "dynamodb_stream_insert_ios_notification",
+        "description": "測試 iOS 推播通知 INSERT 事件處理",
+        "event": {
+          "Records": [
+            {
+              "eventID": "1",
+              "eventName": "INSERT",
+              "eventVersion": "1.1",
+              "eventSource": "aws:dynamodb",
+              "awsRegion": "ap-southeast-1",
+              "dynamodb": {
+                "ApproximateCreationDateTime": 1732000000.0,
+                "Keys": {
+                  "transaction_id": {
+                    "S": "tx-ios-001"
+                  }
+                },
+                "NewImage": {
+                  "transaction_id": {
+                    "S": "tx-ios-001"
+                  },
+                  "created_at": {
+                    "N": "1732000000"
+                  },
+                  "user_id": {
+                    "S": "user-123"
+                  },
+                  "notification_title": {
+                    "S": "Welcome to our app!"
+                  },
+                  "status": {
+                    "S": "SENT"
+                  },
+                  "platform": {
+                    "S": "IOS"
+                  },
+                  "marketing_id": {
+                    "S": "welcome-campaign-2024"
+                  },
+                  "device_token": {
+                    "S": "apns-device-token-123"
+                  },
+                  "payload": {
+                    "S": "{\"aps\":{\"alert\":\"Welcome!\",\"sound\":\"default\"}}"
+                  },
+                  "ap_id": {
+                    "S": "ap-001"
+                  }
+                },
+                "SequenceNumber": "1",
+                "SizeBytes": 512,
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "eventSourceARN": "arn:aws:dynamodb:ap-southeast-1:123456789012:table/command-records/stream/2024-11-19T00:00:00.000"
+            }
+          ]
+        }
+      },
+      {
+        "name": "dynamodb_stream_insert_android_notification",
+        "description": "測試 Android 推播通知 INSERT 事件處理",
+        "event": {
+          "Records": [
+            {
+              "eventID": "2",
+              "eventName": "INSERT",
+              "eventVersion": "1.1",
+              "eventSource": "aws:dynamodb",
+              "awsRegion": "ap-southeast-1",
+              "dynamodb": {
+                "ApproximateCreationDateTime": 1732000001.0,
+                "Keys": {
+                  "transaction_id": {
+                    "S": "tx-android-002"
+                  }
+                },
+                "NewImage": {
+                  "transaction_id": {
+                    "S": "tx-android-002"
+                  },
+                  "created_at": {
+                    "N": "1732000001"
+                  },
+                  "user_id": {
+                    "S": "user-456"
+                  },
+                  "notification_title": {
+                    "S": "New message received"
+                  },
+                  "status": {
+                    "S": "DELIVERED"
+                  },
+                  "platform": {
+                    "S": "ANDROID"
+                  },
+                  "marketing_id": {
+                    "S": "messaging-campaign-2024"
+                  },
+                  "device_token": {
+                    "S": "fcm-device-token-456"
+                  },
+                  "payload": {
+                    "S": "{\"data\":{\"title\":\"New message\",\"body\":\"You have a new message\"}}"
+                  }
+                },
+                "SequenceNumber": "2",
+                "SizeBytes": 480,
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "eventSourceARN": "arn:aws:dynamodb:ap-southeast-1:123456789012:table/command-records/stream/2024-11-19T00:00:00.000"
+            }
+          ]
+        }
+      },
+      {
+        "name": "dynamodb_stream_insert_failed_notification",
+        "description": "測試失敗推播通知 INSERT 事件處理",
+        "event": {
+          "Records": [
+            {
+              "eventID": "3",
+              "eventName": "INSERT",
+              "eventVersion": "1.1",
+              "eventSource": "aws:dynamodb",
+              "awsRegion": "ap-southeast-1",
+              "dynamodb": {
+                "ApproximateCreationDateTime": 1732000002.0,
+                "Keys": {
+                  "transaction_id": {
+                    "S": "tx-failed-003"
+                  }
+                },
+                "NewImage": {
+                  "transaction_id": {
+                    "S": "tx-failed-003"
+                  },
+                  "created_at": {
+                    "N": "1732000002"
+                  },
+                  "user_id": {
+                    "S": "user-789"
+                  },
+                  "notification_title": {
+                    "S": "Promotional offer"
+                  },
+                  "status": {
+                    "S": "FAILED"
+                  },
+                  "platform": {
+                    "S": "WEBPUSH"
+                  },
+                  "marketing_id": {
+                    "S": "promotion-campaign-2024"
+                  },
+                  "device_token": {
+                    "S": "webpush-token-789"
+                  },
+                  "error_msg": {
+                    "S": "Invalid device token"
+                  }
+                },
+                "SequenceNumber": "3",
+                "SizeBytes": 420,
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "eventSourceARN": "arn:aws:dynamodb:ap-southeast-1:123456789012:table/command-records/stream/2024-11-19T00:00:00.000"
+            }
+          ]
+        }
+      },
+      {
+        "name": "dynamodb_stream_modify_event",
+        "description": "測試 DynamoDB Stream MODIFY 事件（應該被跳過）",
+        "event": {
+          "Records": [
+            {
+              "eventID": "4",
+              "eventName": "MODIFY",
+              "eventVersion": "1.1",
+              "eventSource": "aws:dynamodb",
+              "awsRegion": "ap-southeast-1",
+              "dynamodb": {
+                "ApproximateCreationDateTime": 1732000003.0,
+                "Keys": {
+                  "transaction_id": {
+                    "S": "tx-modify-004"
+                  }
+                },
+                "NewImage": {
+                  "transaction_id": {
+                    "S": "tx-modify-004"
+                  },
+                  "status": {
+                    "S": "DELIVERED"
+                  },
+                  "updated_at": {
+                    "N": "1732000003"
+                  }
+                },
+                "OldImage": {
+                  "transaction_id": {
+                    "S": "tx-modify-004"
+                  },
+                  "status": {
+                    "S": "SENT"
+                  },
+                  "updated_at": {
+                    "N": "1732000000"
+                  }
+                },
+                "SequenceNumber": "4",
+                "SizeBytes": 200,
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "eventSourceARN": "arn:aws:dynamodb:ap-southeast-1:123456789012:table/command-records/stream/2024-11-19T00:00:00.000"
+            }
+          ]
+        }
+      },
+      {
+        "name": "dynamodb_stream_remove_event",
+        "description": "測試 DynamoDB Stream REMOVE 事件（應該被跳過）",
+        "event": {
+          "Records": [
+            {
+              "eventID": "5",
+              "eventName": "REMOVE",
+              "eventVersion": "1.1",
+              "eventSource": "aws:dynamodb",
+              "awsRegion": "ap-southeast-1",
+              "dynamodb": {
+                "ApproximateCreationDateTime": 1732000004.0,
+                "Keys": {
+                  "transaction_id": {
+                    "S": "tx-remove-005"
+                  }
+                },
+                "OldImage": {
+                  "transaction_id": {
+                    "S": "tx-remove-005"
+                  },
+                  "created_at": {
+                    "N": "1732000000"
+                  },
+                  "user_id": {
+                    "S": "user-removed"
+                  },
+                  "status": {
+                    "S": "SENT"
+                  }
+                },
+                "SequenceNumber": "5",
+                "SizeBytes": 150,
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              },
+              "eventSourceARN": "arn:aws:dynamodb:ap-southeast-1:123456789012:table/command-records/stream/2024-11-19T00:00:00.000"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  "query_lambda": {
+    "description": "查詢 Lambda 函數測試模板（API Gateway 事件）",
+    "test_cases": [
+      {
+        "name": "apigateway_http_user_query_get",
+        "description": "測試用戶查詢 GET 請求",
+        "event": {
+          "version": "2.0",
+          "routeKey": "GET /user",
+          "rawPath": "/user",
+          "rawQueryString": "user_id=user-123",
+          "cookies": [],
+          "headers": {
+            "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "accept-encoding": "gzip, deflate, br",
+            "accept-language": "en-US,en;q=0.5",
+            "content-length": "0",
+            "host": "notification-api.example.com",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:85.0) Gecko/20100101 Firefox/85.0",
+            "x-amzn-trace-id": "Root=1-61759a5e-1234567890abcdef",
+            "x-forwarded-for": "192.168.1.1",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https"
+          },
+          "queryStringParameters": {
+            "user_id": "user-123"
+          },
+          "requestContext": {
+            "accountId": "123456789012",
+            "apiId": "1234567890",
+            "authentication": null,
+            "authorizer": {
+              "iam": {
+                "accessKey": "AKIA...",
+                "accountId": "123456789012",
+                "callerId": "AIDA...",
+                "cognitoIdentity": null,
+                "principalOrgId": null,
+                "type": "IAM",
+                "userId": "AIDA...",
+                "userArn": "arn:aws:iam::123456789012:user/example-user"
+              }
+            },
+            "domainName": "notification-api.example.com",
+            "domainPrefix": "notification-api",
+            "http": {
+              "method": "GET",
+              "path": "/user",
+              "protocol": "HTTP/1.1",
+              "sourceIp": "192.168.1.1",
+              "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:85.0) Gecko/20100101 Firefox/85.0"
+            },
+            "requestId": "c6af9ac6-7b61-11e6-9a41-93e8deadbeef",
+            "routeKey": "GET /user",
+            "stage": "$default",
+            "time": "19/Nov/2024:10:00:00 +0000",
+            "timeEpoch": 1732000000000
+          },
+          "pathParameters": null,
+          "isBase64Encoded": false,
+          "stageVariables": null
+        }
+      },
+      {
+        "name": "apigateway_http_marketing_query_get",
+        "description": "測試行銷活動查詢 GET 請求",
+        "event": {
+          "version": "2.0",
+          "routeKey": "GET /marketing",
+          "rawPath": "/marketing",
+          "rawQueryString": "marketing_id=welcome-campaign-2024",
+          "cookies": [],
+          "headers": {
+            "accept": "application/json",
+            "content-length": "0",
+            "host": "notification-api.example.com",
+            "user-agent": "PostmanRuntime/7.28.4",
+            "x-amzn-trace-id": "Root=1-61759a5f-2345678901bcdef0",
+            "x-forwarded-for": "10.0.0.100",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https"
+          },
+          "queryStringParameters": {
+            "marketing_id": "welcome-campaign-2024"
+          },
+          "requestContext": {
+            "accountId": "123456789012",
+            "apiId": "1234567890",
+            "authentication": null,
+            "authorizer": {
+              "iam": {
+                "accessKey": "AKIA...",
+                "accountId": "123456789012",
+                "callerId": "AIDA...",
+                "cognitoIdentity": null,
+                "principalOrgId": null,
+                "type": "IAM",
+                "userId": "AIDA...",
+                "userArn": "arn:aws:iam::123456789012:role/NotificationServiceRole"
+              }
+            },
+            "domainName": "notification-api.example.com",
+            "domainPrefix": "notification-api",
+            "http": {
+              "method": "GET",
+              "path": "/marketing",
+              "protocol": "HTTP/1.1",
+              "sourceIp": "10.0.0.100",
+              "userAgent": "PostmanRuntime/7.28.4"
+            },
+            "requestId": "c6af9ac7-7b61-11e6-9a41-93e8deadbeef",
+            "routeKey": "GET /marketing",
+            "stage": "$default",
+            "time": "19/Nov/2024:10:05:00 +0000",
+            "timeEpoch": 1732000300000
+          },
+          "pathParameters": null,
+          "isBase64Encoded": false,
+          "stageVariables": null
+        }
+      },
+      {
+        "name": "apigateway_http_fail_query_get",
+        "description": "測試失敗記錄查詢 GET 請求",
+        "event": {
+          "version": "2.0",
+          "routeKey": "GET /fail",
+          "rawPath": "/fail",
+          "rawQueryString": "transaction_id=tx-failed-003",
+          "cookies": [],
+          "headers": {
+            "accept": "application/json",
+            "authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "content-length": "0",
+            "content-type": "application/json",
+            "host": "notification-api.example.com",
+            "user-agent": "curl/7.68.0",
+            "x-amzn-trace-id": "Root=1-61759a60-3456789012cdef01",
+            "x-forwarded-for": "203.0.113.1",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https"
+          },
+          "queryStringParameters": {
+            "transaction_id": "tx-failed-003"
+          },
+          "requestContext": {
+            "accountId": "123456789012",
+            "apiId": "1234567890",
+            "authentication": null,
+            "authorizer": {
+              "jwt": {
+                "claims": {
+                  "sub": "user-789",
+                  "iss": "https://cognito-idp.ap-southeast-1.amazonaws.com/us-east-1_example",
+                  "aud": "1234567890abcdef",
+                  "exp": 1732086400,
+                  "iat": 1732000000
+                },
+                "scopes": null
+              }
+            },
+            "domainName": "notification-api.example.com",
+            "domainPrefix": "notification-api",
+            "http": {
+              "method": "GET",
+              "path": "/fail",
+              "protocol": "HTTP/1.1",
+              "sourceIp": "203.0.113.1",
+              "userAgent": "curl/7.68.0"
+            },
+            "requestId": "c6af9ac8-7b61-11e6-9a41-93e8deadbeef",
+            "routeKey": "GET /fail",
+            "stage": "$default",
+            "time": "19/Nov/2024:10:10:00 +0000",
+            "timeEpoch": 1732000600000
+          },
+          "pathParameters": null,
+          "isBase64Encoded": false,
+          "stageVariables": null
+        }
+      },
+      {
+        "name": "apigateway_http_invalid_request",
+        "description": "測試缺少必要參數的無效請求",
+        "event": {
+          "version": "2.0",
+          "routeKey": "GET /user",
+          "rawPath": "/user",
+          "rawQueryString": "",
+          "cookies": [],
+          "headers": {
+            "accept": "application/json",
+            "host": "notification-api.example.com",
+            "user-agent": "BadClient/1.0",
+            "x-amzn-trace-id": "Root=1-61759a61-456789012def0123",
+            "x-forwarded-for": "198.51.100.1",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https"
+          },
+          "queryStringParameters": null,
+          "requestContext": {
+            "accountId": "123456789012",
+            "apiId": "1234567890",
+            "authentication": null,
+            "authorizer": null,
+            "domainName": "notification-api.example.com",
+            "domainPrefix": "notification-api",
+            "http": {
+              "method": "GET",
+              "path": "/user",
+              "protocol": "HTTP/1.1",
+              "sourceIp": "198.51.100.1",
+              "userAgent": "BadClient/1.0"
+            },
+            "requestId": "c6af9ac9-7b61-11e6-9a41-93e8deadbeef",
+            "routeKey": "GET /user",
+            "stage": "$default",
+            "time": "19/Nov/2024:10:15:00 +0000",
+            "timeEpoch": 1732000900000
+          },
+          "pathParameters": null,
+          "isBase64Encoded": false,
+          "stageVariables": null
+        }
+      },
+      {
+        "name": "apigateway_http_cors_preflight",
+        "description": "測試 CORS 預檢請求",
+        "event": {
+          "version": "2.0",
+          "routeKey": "OPTIONS /user",
+          "rawPath": "/user",
+          "rawQueryString": "",
+          "cookies": [],
+          "headers": {
+            "access-control-request-headers": "content-type,x-amz-date,authorization,x-api-key,x-amz-security-token",
+            "access-control-request-method": "GET",
+            "host": "notification-api.example.com",
+            "origin": "https://example.com",
+            "referer": "https://example.com/",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:85.0) Gecko/20100101 Firefox/85.0",
+            "x-amzn-trace-id": "Root=1-61759a62-56789012ef012345",
+            "x-forwarded-for": "192.168.1.1",
+            "x-forwarded-port": "443",
+            "x-forwarded-proto": "https"
+          },
+          "queryStringParameters": null,
+          "requestContext": {
+            "accountId": "123456789012",
+            "apiId": "1234567890",
+            "authentication": null,
+            "authorizer": null,
+            "domainName": "notification-api.example.com",
+            "domainPrefix": "notification-api",
+            "http": {
+              "method": "OPTIONS",
+              "path": "/user",
+              "protocol": "HTTP/1.1",
+              "sourceIp": "192.168.1.1",
+              "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.16; rv:85.0) Gecko/20100101 Firefox/85.0"
+            },
+            "requestId": "c6af9aca-7b61-11e6-9a41-93e8deadbeef",
+            "routeKey": "OPTIONS /user",
+            "stage": "$default",
+            "time": "19/Nov/2024:10:20:00 +0000",
+            "timeEpoch": 1732001200000
+          },
+          "pathParameters": null,
+          "isBase64Encoded": false,
+          "stageVariables": null
+        }
+      }
+    ]
+  },
+
+  "query_result_lambda": {
+    "description": "查詢結果 Lambda 函數測試模板",
+    "test_cases": [
+      {
+        "name": "eventbridge_scheduled_event",
+        "description": "測試 EventBridge 定時觸發事件",
+        "event": {
+          "version": "0",
+          "id": "cdc73f9d-aea9-11e3-9d5a-835b769c0d9c",
+          "detail-type": "Scheduled Event",
+          "source": "aws.events",
+          "account": "123456789012",
+          "time": "2024-11-19T10:00:00Z",
+          "region": "ap-southeast-1",
+          "detail": {},
+          "resources": [
+            "arn:aws:events:ap-southeast-1:123456789012:rule/notification-daily-report"
+          ]
+        }
+      },
+      {
+        "name": "eventbridge_custom_event",
+        "description": "測試自定義 EventBridge 事件",
+        "event": {
+          "version": "0",
+          "id": "fe8d3c65-2a3c-4c8a-93d8-8c19e9b9d123",
+          "detail-type": "Notification Report Trigger",
+          "source": "notification.service",
+          "account": "123456789012",
+          "time": "2024-11-19T10:30:00Z",
+          "region": "ap-southeast-1",
+          "detail": {
+            "reportType": "marketing-campaign",
+            "campaignId": "welcome-campaign-2024",
+            "requestedBy": "admin-user-001",
+            "parameters": {
+              "includeFailures": true,
+              "dateRange": {
+                "startDate": "2024-11-18",
+                "endDate": "2024-11-19"
+              }
+            }
+          },
+          "resources": []
+        }
+      },
+      {
+        "name": "cloudwatch_alarm_trigger",
+        "description": "測試 CloudWatch 警報觸發事件",
+        "event": {
+          "version": "0",
+          "id": "89d1a02d-5ec7-412e-82f5-13505f849b61",
+          "detail-type": "CloudWatch Alarm State Change",
+          "source": "aws.cloudwatch",
+          "account": "123456789012",
+          "time": "2024-11-19T11:00:00Z",
+          "region": "ap-southeast-1",
+          "detail": {
+            "alarmName": "NotificationFailureRate",
+            "state": {
+              "value": "ALARM",
+              "reason": "Threshold Crossed: 1 out of the last 1 datapoints [5.0 (19/11/24 11:00:00)] was greater than the threshold (2.0) (minimum 1 datapoint for OK -> ALARM transition).",
+              "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2024-11-19T11:00:00.000+0000\",\"startDate\":\"2024-11-19T10:55:00.000+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[5.0],\"threshold\":2.0}",
+              "timestamp": "2024-11-19T11:00:00.000+0000"
+            },
+            "previousState": {
+              "value": "OK",
+              "reason": "Threshold Crossed: 1 out of the last 1 datapoints [1.0 (19/11/24 10:55:00)] was not greater than the threshold (2.0) (minimum 1 datapoint for ALARM -> OK transition).",
+              "reasonData": "{\"version\":\"1.0\",\"queryDate\":\"2024-11-19T10:55:00.000+0000\",\"startDate\":\"2024-11-19T10:50:00.000+0000\",\"statistic\":\"Sum\",\"period\":300,\"recentDatapoints\":[1.0],\"threshold\":2.0}",
+              "timestamp": "2024-11-19T10:55:00.000+0000"
+            },
+            "configuration": {
+              "description": "Alarm when notification failure rate exceeds threshold",
+              "metricName": "NotificationFailures",
+              "namespace": "NotificationService",
+              "statistic": "Sum",
+              "dimensions": [
+                {
+                  "name": "Environment",
+                  "value": "production"
+                }
+              ],
+              "period": 300,
+              "evaluationPeriods": 1,
+              "threshold": 2.0,
+              "comparisonOperator": "GreaterThanThreshold",
+              "treatMissingData": "breaching"
+            }
+          },
+          "resources": [
+            "arn:aws:cloudwatch:ap-southeast-1:123456789012:alarm:NotificationFailureRate"
+          ]
+        }
+      },
+      {
+        "name": "sns_notification_trigger",
+        "description": "測試 SNS 通知觸發事件",
+        "event": {
+          "Records": [
+            {
+              "EventSource": "aws:sns",
+              "EventVersion": "1.0",
+              "EventSubscriptionArn": "arn:aws:sns:ap-southeast-1:123456789012:notification-alerts:b458c8d5-0829-4866-89da-3aae8d2b3d8c",
+              "Sns": {
+                "Type": "Notification",
+                "MessageId": "95df01b4-ee98-5cb9-9903-4c221d41eb5e",
+                "TopicArn": "arn:aws:sns:ap-southeast-1:123456789012:notification-alerts",
+                "Subject": "Generate Failure Report",
+                "Message": "{\"reportType\":\"failure-analysis\",\"priority\":\"high\",\"requestedBy\":\"monitoring-system\",\"parameters\":{\"timeWindow\":\"last-hour\",\"includeDiagnostics\":true}}",
+                "Timestamp": "2024-11-19T12:00:00.000Z",
+                "SignatureVersion": "1",
+                "Signature": "EXAMPLE",
+                "SigningCertUrl": "EXAMPLE",
+                "UnsubscribeUrl": "EXAMPLE",
+                "MessageAttributes": {
+                  "priority": {
+                    "Type": "String",
+                    "Value": "high"
+                  },
+                  "reportType": {
+                    "Type": "String",
+                    "Value": "failure-analysis"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "sqs_batch_trigger",
+        "description": "測試 SQS 批次觸發事件",
+        "event": {
+          "Records": [
+            {
+              "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
+              "receiptHandle": "MessageReceiptHandle",
+              "body": "{\"reportType\":\"daily-summary\",\"date\":\"2024-11-19\",\"requestId\":\"req-001\"}",
+              "attributes": {
+                "ApproximateReceiveCount": "1",
+                "SentTimestamp": "1732000800000",
+                "SenderId": "123456789012",
+                "ApproximateFirstReceiveTimestamp": "1732000800000"
+              },
+              "messageAttributes": {
+                "reportType": {
+                  "stringValue": "daily-summary",
+                  "dataType": "String"
+                }
+              },
+              "md5OfBody": "7b270e59b47ff90a553787216d55d91d",
+              "eventSource": "aws:sqs",
+              "eventSourceARN": "arn:aws:sqs:ap-southeast-1:123456789012:notification-report-queue",
+              "awsRegion": "ap-southeast-1"
+            },
+            {
+              "messageId": "29dd0b57-b21e-4ac1-bd88-01bbb068cb79",
+              "receiptHandle": "MessageReceiptHandle2",
+              "body": "{\"reportType\":\"weekly-analytics\",\"weekOf\":\"2024-11-18\",\"requestId\":\"req-002\"}",
+              "attributes": {
+                "ApproximateReceiveCount": "1",
+                "SentTimestamp": "1732000900000",
+                "SenderId": "123456789012",
+                "ApproximateFirstReceiveTimestamp": "1732000900000"
+              },
+              "messageAttributes": {
+                "reportType": {
+                  "stringValue": "weekly-analytics",
+                  "dataType": "String"
+                }
+              },
+              "md5OfBody": "8c281e60c48ff91b664898327e66e92e",
+              "eventSource": "aws:sqs",
+              "eventSourceARN": "arn:aws:sqs:ap-southeast-1:123456789012:notification-report-queue",
+              "awsRegion": "ap-southeast-1"
+            }
+          ]
+        }
+      }
+    ]
+  },
+
+  "testing_instructions": {
+    "description": "Lambda 測試執行指南",
+    "local_testing": {
+      "prerequisites": [
+        "確保 LocalStack 環境正在運行",
+        "DynamoDB 表已正確創建",
+        "環境變數已設定",
+        "EKS Handler 服務已啟動（針對 query_lambda）"
+      ],
+      "commands": {
+        "stream_processor": [
+          "cd query-service/lambdas/stream_processor_lambda",
+          "python -c \"import json; from app import lambda_handler; event = json.load(open('../../lambda-test-templates.json'))['stream_processor_lambda']['test_cases'][0]['event']; print(lambda_handler(event, None))\""
+        ],
+        "query_lambda": [
+          "cd query-service/lambdas/query_lambda",
+          "pytest test_app.py -v",
+          "python -c \"import json; from app import lambda_handler; event = json.load(open('../../lambda-test-templates.json'))['query_lambda']['test_cases'][0]['event']; print(lambda_handler(event, None))\""
+        ]
+      }
+    },
+    "aws_testing": {
+      "cli_invoke": [
+        "aws lambda invoke --function-name stream-processor-lambda --payload file://stream_test_event.json response.json",
+        "aws lambda invoke --function-name query-lambda --payload file://query_test_event.json response.json"
+      ],
+      "console_testing": [
+        "登入 AWS Lambda Console",
+        "選擇對應的 Lambda 函數",
+        "點擊 'Test' 標籤",
+        "選擇事件模板或創建新的測試事件",
+        "使用上述 JSON 格式作為測試載荷",
+        "執行測試並查看結果"
+      ]
+    },
+    "environment_variables": {
+      "stream_processor_lambda": {
+        "NOTIFICATION_TABLE_NAME": "notification-records",
+        "AWS_REGION": "ap-southeast-1"
+      },
+      "query_lambda": {
+        "EKS_HANDLER_URL": "http://eks-handler:8000",
+        "REQUEST_TIMEOUT": "10"
+      }
+    }
+  }
+}
