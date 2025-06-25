@@ -104,17 +104,17 @@ class QueryPort(ABC):
         self, transaction_id: Optional[str] = None, limit: int = 30
     ) -> QueryResult:
         """查詢交易推播記錄"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     async def query_failed_notifications(self, transaction_id: Optional[str] = None) -> QueryResult:
         """查詢失敗推播記錄"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     async def query_sns_notifications(self, sns_id: str) -> QueryResult:
         """查詢 SNS 推播記錄"""
-        pass
+        pass  # pragma: no cover
 
 
 class InternalAPIInvokerPort(ABC):
@@ -123,17 +123,17 @@ class InternalAPIInvokerPort(ABC):
     @abstractmethod
     async def invoke_transaction_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """調用交易查詢端點"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     async def invoke_failed_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """調用失敗查詢端點"""
-        pass
+        pass  # pragma: no cover
 
     @abstractmethod
     async def invoke_sns_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """調用 SNS 查詢端點"""
-        pass
+        pass  # pragma: no cover
 
 
 # ================================
