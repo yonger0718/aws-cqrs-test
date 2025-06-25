@@ -33,20 +33,29 @@ class EKSHandlerService:
         )
 
     @tracer.capture_method
-    def query_transaction_notifications(self, transaction_id: str) -> requests.Response:
-        """Query transaction notification records"""
+    def query_transaction_notifications(
+        self, transaction_id: Optional[str] = None, limit: int = 30
+    ) -> requests.Response:
+        """Query transaction notification records - supports optional transaction_id and limit"""
+        query_type = "specific" if transaction_id else "recent"
         logger.info(
-            "Starting transaction notifications query", extra={"transaction_id": transaction_id}
+            f"Starting {query_type} transaction notifications query",
+            extra={"transaction_id": transaction_id, "limit": limit},
         )
-        url = f"{self.base_url}/query/transaction"
-        payload = {"transaction_id": transaction_id}
+        url = f"{self.base_url}/tx"
+
+        # 使用 GET 方法並將參數作為查詢參數
+        params: Dict[str, Any] = {"limit": limit}
+        if transaction_id:
+            params["transaction_id"] = transaction_id
 
         try:
-            response = requests.post(url, json=payload, timeout=self.timeout)
+            response = requests.get(url, params=params, timeout=self.timeout)
             logger.info(
-                "Transaction notifications query completed",
+                f"{query_type.capitalize()} transaction notifications query completed",
                 extra={
                     "transaction_id": transaction_id,
+                    "limit": limit,
                     "status_code": response.status_code,
                     "response_size": len(response.content),
                 },
@@ -55,7 +64,7 @@ class EKSHandlerService:
         except requests.exceptions.RequestException as e:
             logger.error(
                 "Failed to query transaction notifications",
-                extra={"transaction_id": transaction_id, "error": str(e)},
+                extra={"transaction_id": transaction_id, "limit": limit, "error": str(e)},
             )
             raise
 
@@ -88,6 +97,31 @@ class EKSHandlerService:
             )
             raise
 
+    @tracer.capture_method
+    def query_sns_notifications(self, sns_id: str) -> requests.Response:
+        """Query SNS notification records"""
+        logger.info("Starting SNS notifications query", extra={"sns_id": sns_id})
+        url = f"{self.base_url}/query/sns"
+        payload = {"sns_id": sns_id}
+
+        try:
+            response = requests.post(url, json=payload, timeout=self.timeout)
+            logger.info(
+                "SNS notifications query completed",
+                extra={
+                    "sns_id": sns_id,
+                    "status_code": response.status_code,
+                    "response_size": len(response.content),
+                },
+            )
+            return response
+        except requests.exceptions.RequestException as e:
+            logger.error(
+                "Failed to query SNS notifications",
+                extra={"sns_id": sns_id, "error": str(e)},
+            )
+            raise
+
 
 def handle_eks_response(response: requests.Response) -> tuple[Dict[str, Any], int]:
     """Handle EKS service response with proper error handling"""
@@ -113,11 +147,12 @@ eks_service = EKSHandlerService(EKS_HANDLER_URL, REQUEST_TIMEOUT)
 @app.post("/tx")
 @tracer.capture_method
 def post_transaction_notifications() -> Dict[str, Any]:
-    """Get transaction notifications via API Gateway"""
+    """Get transaction notifications via API Gateway - supports optional transaction_id and limit"""
     try:
         # 從 POST 請求體中獲取參數
         body = app.current_event.json_body or {}
         transaction_id = body.get("transaction_id")
+        limit = body.get("limit", 30)  # 預設 30 筆
     except Exception:
         # 如果解析 JSON 失敗，嘗試從 query string 獲取（向後兼容）
         transaction_id = (
@@ -125,33 +160,47 @@ def post_transaction_notifications() -> Dict[str, Any]:
             if app.current_event.query_string_parameters
             else None
         )
+        try:
+            limit = int(
+                app.current_event.query_string_parameters.get("limit", "30")
+                if app.current_event.query_string_parameters
+                else "30"
+            )
+        except (ValueError, TypeError):
+            limit = 30
 
-    if not transaction_id or not transaction_id.strip():
-        logger.warning("Missing or empty transaction_id parameter")
-        raise BadRequestError("Missing or empty transaction_id parameter")
+    # 驗證 limit 參數
+    if not isinstance(limit, int) or limit < 1 or limit > 100:
+        logger.warning(f"Invalid limit parameter: {limit}")
+        raise BadRequestError("Limit must be between 1 and 100")
 
-    logger.info(f"Processing transaction query for transaction_id: {transaction_id}")
+    # transaction_id 現在是可選的
+    query_type = "specific" if transaction_id and transaction_id.strip() else "recent"
+    logger.info(
+        f"Processing {query_type} transaction query - "
+        f"transaction_id: {transaction_id}, limit: {limit}"
+    )
 
     try:
-        response = eks_service.query_transaction_notifications(transaction_id)
+        response = eks_service.query_transaction_notifications(transaction_id, limit)
         result, status_code = handle_eks_response(response)
 
         if status_code != 200:
             logger.warning(f"EKS service returned error: {status_code}")
             return {"error": "EKS service error", "details": result}
 
-        logger.info("Transaction query completed successfully")
+        logger.info(f"{query_type.capitalize()} transaction query completed successfully")
         return result
 
     except requests.exceptions.Timeout:
         logger.error("Request to EKS handler timed out")
-        raise ServiceError("Request timeout")
+        raise ServiceError(504, "Request timeout")
     except requests.exceptions.ConnectionError:
         logger.error("Failed to connect to EKS handler")
-        raise ServiceError("Service unavailable")
+        raise ServiceError(502, "Service unavailable")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request to EKS handler failed: {str(e)}")
-        raise ServiceError("Request failed")
+        raise ServiceError(502, "Request failed")
 
 
 @app.post("/fail")
@@ -189,13 +238,13 @@ def post_failed_notifications() -> Dict[str, Any]:
 
     except requests.exceptions.Timeout:
         logger.error("Request to EKS handler timed out")
-        raise ServiceError("Request timeout")
+        raise ServiceError(504, "Request timeout")
     except requests.exceptions.ConnectionError:
         logger.error("Failed to connect to EKS handler")
-        raise ServiceError("Service unavailable")
+        raise ServiceError(502, "Service unavailable")
     except requests.exceptions.RequestException as e:
         logger.error(f"Request to EKS handler failed: {str(e)}")
-        raise ServiceError("Request failed")
+        raise ServiceError(502, "Request failed")
 
 
 @logger.inject_lambda_context(correlation_id_path=correlation_paths.API_GATEWAY_HTTP)
@@ -258,34 +307,50 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             if path in ["/tx", "/query/transaction", "/query/tx"]:
                 logger.info("Processing transaction query request")
 
-                # Get transaction_id from query parameters or body
+                # Get transaction_id and limit from query parameters or body
                 transaction_id = None
+                limit = 30  # 預設值
+
                 if query_params:
                     transaction_id = query_params.get("transaction_id")
-                    logger.info(f"Transaction ID from query params: {transaction_id}")
+                    try:
+                        limit = int(query_params.get("limit", "30"))
+                    except (ValueError, TypeError):
+                        limit = 30
+                    logger.info(
+                        f"Parameters from query: transaction_id={transaction_id}, limit={limit}"
+                    )
 
-                # If no transaction_id in query params, try body (for POST requests)
-                if not transaction_id and body_str:
+                # If no parameters in query params, try body (for POST requests)
+                if body_str:
                     try:
                         body_data = json.loads(body_str)
-                        transaction_id = body_data.get("transaction_id")
-                        logger.info(f"Transaction ID from body: {transaction_id}")
+                        if not transaction_id:
+                            transaction_id = body_data.get("transaction_id")
+                        if limit == 30:  # 只有在還是預設值時才從 body 取得
+                            limit = body_data.get("limit", 30)
+                        logger.info(
+                            f"Parameters from body: transaction_id={transaction_id}, limit={limit}"
+                        )
                     except json.JSONDecodeError as e:
                         logger.warning(f"Failed to parse request body: {e}")
 
-                if not transaction_id:
-                    logger.error("Missing transaction_id parameter")
+                # 驗證 limit 參數
+                if not isinstance(limit, int) or limit < 1 or limit > 100:
+                    logger.error(f"Invalid limit parameter: {limit}")
                     return {
                         "statusCode": 400,
                         "headers": {"Content-Type": "application/json"},
-                        "body": json.dumps({"error": "Missing required parameter: transaction_id"}),
+                        "body": json.dumps({"error": "Limit must be between 1 and 100"}),
                     }
 
+                # transaction_id 現在是可選的
+                query_type = "specific" if transaction_id and transaction_id.strip() else "recent"
                 logger.info(
-                    f"Forwarding transaction query to EKS handler for "
-                    f"transaction_id: {transaction_id}"
+                    f"Forwarding {query_type} transaction query to EKS handler - "
+                    f"transaction_id: {transaction_id}, limit: {limit}"
                 )
-                response = eks_service.query_transaction_notifications(transaction_id)
+                response = eks_service.query_transaction_notifications(transaction_id, limit)
 
             elif path in ["/fail", "/query/fail"]:
                 logger.info("Processing failed notifications query request")
@@ -313,6 +378,35 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                 )
                 response = eks_service.query_failed_notifications(transaction_id)
 
+            elif path in ["/sns", "/query/sns"]:
+                logger.info("Processing SNS notifications query request")
+
+                # Get sns_id from query parameters or body
+                sns_id = None
+                if query_params:
+                    sns_id = query_params.get("sns_id")
+                    logger.info(f"SNS ID from query params: {sns_id}")
+
+                # If no sns_id in query params, try body (for POST requests)
+                if not sns_id and body_str:
+                    try:
+                        body_data = json.loads(body_str)
+                        sns_id = body_data.get("sns_id")
+                        logger.info(f"SNS ID from body: {sns_id}")
+                    except json.JSONDecodeError as e:
+                        logger.warning(f"Failed to parse request body: {e}")
+
+                if not sns_id:
+                    logger.error("Missing sns_id parameter")
+                    return {
+                        "statusCode": 400,
+                        "headers": {"Content-Type": "application/json"},
+                        "body": json.dumps({"error": "Missing required parameter: sns_id"}),
+                    }
+
+                logger.info(f"Forwarding SNS query to EKS handler for " f"sns_id: {sns_id}")
+                response = eks_service.query_sns_notifications(sns_id)
+
             else:
                 logger.warning(f"Unmatched path: {path}")
                 return {
@@ -322,7 +416,7 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
                         {
                             "error": "Path not found",
                             "path": path,
-                            "available_paths": ["/tx", "/fail"],
+                            "available_paths": ["/tx", "/fail", "/sns"],
                         }
                     ),
                 }
@@ -367,28 +461,52 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
         # Route based on path
         if "/tx" in path:
             transaction_id = query_params.get("transaction_id")
-            if not transaction_id:
-                logger.warning("Missing transaction_id parameter in direct invocation")
+            try:
+                limit = int(query_params.get("limit", "30"))
+            except (ValueError, TypeError):
+                limit = 30
+
+            # 驗證 limit 參數
+            if not isinstance(limit, int) or limit < 1 or limit > 100:
+                logger.warning(f"Invalid limit parameter in direct invocation: {limit}")
                 return {
                     "statusCode": 400,
-                    "body": json.dumps({"error": "Missing required parameter: transaction_id"}),
+                    "body": json.dumps({"error": "Limit must be between 1 and 100"}),
                     "headers": {"Content-Type": "application/json"},
                 }
 
-            logger.info(f"Direct invocation: transaction query for {transaction_id}")
-            response = eks_service.query_transaction_notifications(transaction_id)
+            # transaction_id 現在是可選的
+            query_type = "specific" if transaction_id and transaction_id.strip() else "recent"
+            logger.info(
+                f"Direct invocation: {query_type} transaction query - "
+                f"transaction_id: {transaction_id}, limit: {limit}"
+            )
+            response = eks_service.query_transaction_notifications(transaction_id, limit)
 
         elif "/fail" in path:
             transaction_id = query_params.get("transaction_id", "")  # Optional for failed queries
             logger.info(f"Direct invocation: failed query for {transaction_id or 'all'}")
             response = eks_service.query_failed_notifications(transaction_id)
 
+        elif "/sns" in path:
+            sns_id = query_params.get("sns_id")
+            if not sns_id:
+                logger.warning("Missing sns_id parameter in direct invocation")
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "Missing required parameter: sns_id"}),
+                    "headers": {"Content-Type": "application/json"},
+                }
+
+            logger.info(f"Direct invocation: SNS query for {sns_id}")
+            response = eks_service.query_sns_notifications(sns_id)
+
         else:
             logger.warning(f"Unmatched path for direct invocation: {path}")
             return {
                 "statusCode": 404,
                 "body": json.dumps(
-                    {"error": "Path not found", "supported_paths": ["/tx", "/fail"]}
+                    {"error": "Path not found", "supported_paths": ["/tx", "/fail", "/sns"]}
                 ),
                 "headers": {"Content-Type": "application/json"},
             }
@@ -406,19 +524,14 @@ def lambda_handler(event: Dict[str, Any], context: LambdaContext) -> Dict[str, A
             return {"statusCode": response.status_code, "body": response.text}
 
     except requests.exceptions.Timeout:
-        logger.error("Request timeout")
-        return {
-            "statusCode": 504,
-            "body": json.dumps({"error": "Request timeout"}),
-            "headers": {"Content-Type": "application/json"},
-        }
+        logger.error("Request to EKS handler timed out")
+        raise ServiceError(504, "Request timeout")
+    except requests.exceptions.ConnectionError:
+        logger.error("Failed to connect to EKS handler")
+        raise ServiceError(502, "Service unavailable")
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error: {str(e)}")
-        return {
-            "statusCode": 502,
-            "body": json.dumps({"error": "Service unavailable", "details": str(e)}),
-            "headers": {"Content-Type": "application/json"},
-        }
+        logger.error(f"Request to EKS handler failed: {str(e)}")
+        raise ServiceError(502, "Request failed")
     except Exception as e:
         logger.error(f"Unhandled error: {str(e)}", exc_info=True)
         return {

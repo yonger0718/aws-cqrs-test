@@ -38,34 +38,36 @@ class Platform(Enum):
 
 @dataclass
 class CommandRecord:
-    """Command record domain model"""
+    """Command side record structure"""
 
     transaction_id: str
     created_at: int
     user_id: str
+    marketing_id: Optional[str]
     notification_title: str
     status: NotificationStatus
     platform: Platform
-    marketing_id: Optional[str] = None
-    device_token: Optional[str] = None
-    payload: Optional[str] = None
-    error_msg: Optional[str] = None
-    ap_id: Optional[str] = None
+    device_token: Optional[str]
+    payload: Optional[str]
+    error_msg: Optional[str]
+    ap_id: Optional[str]
+    sns_id: Optional[str] = None
 
 
 @dataclass
 class QueryRecord:
-    """Query record domain model"""
+    """Query side record structure for notification-records table"""
 
     user_id: str
     created_at: int
     transaction_id: str
+    marketing_id: Optional[str]
     notification_title: str
     status: NotificationStatus
     platform: Platform
-    marketing_id: Optional[str] = None
-    error_msg: Optional[str] = None
-    ap_id: Optional[str] = None
+    error_msg: Optional[str]
+    ap_id: Optional[str]
+    sns_id: Optional[str] = None
 
 
 def get_dynamodb_resource() -> Any:
@@ -167,6 +169,7 @@ def parse_command_record(dynamo_record: Dict[str, Any]) -> CommandRecord:
             payload=extract_value(dynamo_record, "payload"),
             error_msg=extract_value(dynamo_record, "error_msg"),
             ap_id=extract_value(dynamo_record, "ap_id"),
+            sns_id=extract_value(dynamo_record, "sns_id"),
         )
     except (ValueError, KeyError) as e:
         logger.error(
@@ -184,12 +187,13 @@ def transform_to_query_record(command_record: CommandRecord) -> QueryRecord:
         user_id=command_record.user_id,
         created_at=command_record.created_at,
         transaction_id=command_record.transaction_id,
+        marketing_id=command_record.marketing_id,
         notification_title=command_record.notification_title,
         status=command_record.status,
         platform=command_record.platform,
-        marketing_id=command_record.marketing_id,
         error_msg=command_record.error_msg,
         ap_id=command_record.ap_id,
+        sns_id=command_record.sns_id,
     )
 
 
@@ -214,6 +218,8 @@ def save_query_record(query_record: QueryRecord) -> None:
             item["error_msg"] = query_record.error_msg
         if query_record.ap_id:
             item["ap_id"] = query_record.ap_id
+        if query_record.sns_id:
+            item["sns_id"] = query_record.sns_id
 
         table.put_item(Item=item)
         logger.info(f"Successfully saved query record: {query_record.transaction_id}")

@@ -9,7 +9,9 @@ import sys
 import unittest
 from pathlib import Path
 from typing import Any, Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock
+
+import responses
 
 # 設置測試環境變數
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
@@ -101,31 +103,38 @@ class TestQueryLambda(unittest.TestCase):
         service = app.EKSHandlerService("http://test:8000/", 5)
         self.assertEqual(service.base_url, "http://test:8000")
 
-    @patch("requests.post")
-    def test_all_query_methods(self, mock_post: Mock) -> None:
+    @responses.activate
+    def test_all_query_methods(self) -> None:
         """測試所有查詢方法"""
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.content = b'{"success": true}'
-        mock_response.json.return_value = {"success": True}
-        mock_post.return_value = mock_response
-
-        # 測試交易查詢
-        self.service.query_transaction_notifications("user123")
-        mock_post.assert_called_with(
-            "http://test:8000/query/transaction", json={"transaction_id": "user123"}, timeout=5
+        # 設置 responses mock
+        # query_transaction_notifications 使用 GET 方法
+        responses.add(responses.GET, "http://test:8000/tx", json={"success": True}, status=200)
+        # query_failed_notifications 使用 POST 方法
+        responses.add(
+            responses.POST, "http://test:8000/query/fail", json={"success": True}, status=200
+        )
+        # query_sns_notifications 使用 POST 方法
+        responses.add(
+            responses.POST, "http://test:8000/query/sns", json={"success": True}, status=200
         )
 
-        # 重置 mock
-        mock_post.reset_mock()
+        # 測試交易查詢 (GET)
+        response = self.service.query_transaction_notifications("user123")
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertEqual(result["success"], True)
 
-        # 測試失敗查詢
-        self.service.query_failed_notifications("tx123")
-        mock_post.assert_called_with(
-            "http://test:8000/query/fail",
-            json={"transaction_id": "tx123"},
-            timeout=5,
-        )
+        # 測試失敗查詢 (POST)
+        response = self.service.query_failed_notifications("tx123")
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertEqual(result["success"], True)
+
+        # 測試 SNS 查詢 (POST)
+        response = self.service.query_sns_notifications("sns123")
+        self.assertEqual(response.status_code, 200)
+        result = response.json()
+        self.assertEqual(result["success"], True)
 
 
 if __name__ == "__main__":

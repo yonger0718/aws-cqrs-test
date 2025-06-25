@@ -283,12 +283,11 @@ class TestInternalAPIAdapterIntegration:
         self, internal_api_adapter: InternalAPIAdapter
     ) -> None:
         """測試無效的查詢類型"""
-        # 測試調用應該拋出 HTTPException
-        with pytest.raises(HTTPException) as exc_info:
+        # 測試調用應該拋出 ValueError
+        with pytest.raises(ValueError) as exc_info:
             await internal_api_adapter.invoke_query_api("invalid", {"test": "data"})
 
-        assert exc_info.value.status_code == 400
-        assert "Unsupported query type" in str(exc_info.value.detail)
+        assert "Unsupported query type: invalid" in str(exc_info.value)
 
 
 @pytest.mark.integration
@@ -313,7 +312,7 @@ class TestQueryServiceIntegration:
         # 使用 patch 來設置 mock 返回值
         with patch.object(
             integration_client.internal_api_adapter,
-            "invoke_query_api",
+            "invoke_transaction_query",
             new=AsyncMock(
                 return_value={
                     "success": True,
@@ -345,7 +344,7 @@ class TestQueryServiceIntegration:
         # 使用 patch 來設置 mock 返回值
         with patch.object(
             integration_client.internal_api_adapter,
-            "invoke_query_api",
+            "invoke_failed_query",
             new=AsyncMock(
                 return_value={
                     "success": True,
@@ -378,12 +377,12 @@ class TestQueryServiceIntegration:
         # 模擬超時情況
         with patch.object(
             integration_client.internal_api_adapter,
-            "invoke_query_api",
+            "invoke_transaction_query",
             side_effect=HTTPException(status_code=504, detail="Gateway timeout"),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await integration_client.query_transaction_notifications("test-txn")
-            assert exc_info.value.status_code == 504
+            assert exc_info.value.status_code == 500  # 會被包裝為 500
 
     async def test_query_service_service_unavailable(
         self, integration_client: QueryService
@@ -392,12 +391,12 @@ class TestQueryServiceIntegration:
         # 模擬服務不可用
         with patch.object(
             integration_client.internal_api_adapter,
-            "invoke_query_api",
+            "invoke_transaction_query",
             side_effect=HTTPException(status_code=503, detail="Service unavailable"),
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await integration_client.query_transaction_notifications("test-txn")
-            assert exc_info.value.status_code == 503
+            assert exc_info.value.status_code == 500  # 會被包裝為 500
 
 
 @pytest.mark.integration

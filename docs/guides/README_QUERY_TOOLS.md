@@ -140,6 +140,7 @@ Lambda 函數列表:
 # 1. 健康檢查端點
 # 2. 查詢所有推播記錄
 # 3. 查詢特定用戶記錄
+# 🆕 4. 查詢 SNS 推播記錄
 ```
 
 **預期輸出：**
@@ -156,6 +157,26 @@ Lambda 函數列表:
   成功: True
   記錄數: 9
   第一筆記錄範例: {...}
+
+🆕 SNS 查詢結果:
+{
+  "success": true,
+  "data": [...],
+  "message": "Successfully retrieved notifications for SNS ID: sns-12345",
+  "total_count": 1
+}
+```
+
+### 手動 SNS 查詢範例 🆕
+
+```powershell
+# GET 方式查詢 SNS
+Invoke-RestMethod -Uri "http://localhost:8000/sns?sns_id=sns-12345" -Method GET
+
+# POST 方式查詢 SNS
+$snsBody = @{ sns_id = "sns-12345" } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:8000/query/sns" -Method POST `
+    -ContentType "application/json" -Body $snsBody
 ```
 
 ---

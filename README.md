@@ -178,6 +178,12 @@ poetry run pytest
 curl "http://localhost:8000/tx?transaction_id=tx_001"
 curl "http://localhost:8000/fail?transaction_id=tx_002"
 curl "http://localhost:8000/fail"  # 查詢所有失敗記錄
+
+# 🆕 V4.1 SNS 查詢端點
+curl "http://localhost:8000/sns?sns_id=sns-12345"
+curl -X POST "http://localhost:8000/query/sns" \
+  -H "Content-Type: application/json" \
+  -d '{"sns_id": "sns-12345"}'
 ```
 
 ## 📋 推薦測試驗證順序

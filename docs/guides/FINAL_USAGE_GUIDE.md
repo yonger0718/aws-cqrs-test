@@ -78,6 +78,14 @@ Invoke-RestMethod -Uri "http://localhost:8000/query/user" -Method GET
 # 查詢特定用戶
 Invoke-RestMethod -Uri "http://localhost:8000/query/user?user_id=stream_test_user" \
     -Method GET
+
+# 🆕 查詢 SNS 推播記錄
+Invoke-RestMethod -Uri "http://localhost:8000/sns?sns_id=sns-12345" -Method GET
+
+# 🆕 POST 方式查詢 SNS
+$snsBody = @{ sns_id = "sns-12345" } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:8000/query/sns" -Method POST \
+    -ContentType "application/json" -Body $snsBody
 ```
 
 ### 🔧 **查詢 Lambda 函數**
@@ -154,6 +162,27 @@ $queryCount = (Invoke-RestMethod -Uri "http://localhost:4566/" -Method POST `
     -Headers $headers -Body $queryBody).Count
 
 Write-Host "命令表: $commandCount 筆, 查詢表: $queryCount 筆"
+```
+
+### 查看 SNS 推播記錄 🆕
+
+```powershell
+# 查詢特定 SNS ID
+$response = Invoke-RestMethod -Uri "http://localhost:8000/sns?sns_id=sns-12345" -Method GET
+if ($response.success -and $response.total_count -gt 0) {
+    Write-Host "找到 $($response.total_count) 筆 SNS 記錄"
+    $response.data | ForEach-Object {
+        Write-Host "Transaction ID: $($_.transaction_id), 標題: $($_.notification_title), SNS ID: $($_.sns_id)"
+    }
+} else {
+    Write-Host "未找到 SNS ID: sns-12345 的記錄"
+}
+
+# 使用 POST 方式查詢 SNS
+$snsBody = @{ sns_id = "sns-12345" } | ConvertTo-Json
+$response = Invoke-RestMethod -Uri "http://localhost:8000/query/sns" -Method POST `
+    -ContentType "application/json" -Body $snsBody
+Write-Host "SNS 查詢結果: $($response.message)"
 ```
 
 ---

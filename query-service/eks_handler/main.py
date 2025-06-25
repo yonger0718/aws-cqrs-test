@@ -21,7 +21,7 @@ import logging
 import os
 import sys
 from abc import ABC, abstractmethod
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -35,25 +35,50 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# UTC+8 timezone object
+UTC_PLUS_8 = timezone(timedelta(hours=8))
+
+
+def convert_timestamp_to_utc8_string(timestamp: Optional[int]) -> Optional[str]:
+    """Convert Unix timestamp to UTC+8 timezone string format"""
+    if timestamp is None or timestamp == 0:
+        return None
+
+    try:
+        # Convert timestamp to datetime in UTC+8
+        dt = datetime.fromtimestamp(timestamp / 1000.0, tz=UTC_PLUS_8)
+        return dt.strftime("%Y-%m-%d %H:%M:%S UTC+8")
+    except (ValueError, TypeError, OSError) as e:
+        logger.warning(f"Failed to convert timestamp {timestamp}: {e}")
+        return None
+
+
 # ================================
 # Domain Models (領域模型)
 # ================================
 
 
 class NotificationRecord(BaseModel):
-    """推播記錄領域模型 - 更新以符合新的 schema"""
+    """推播記錄領域模型 - 更新以符合新的 schema 並包含時區轉換"""
 
     transaction_id: str = Field(..., description="唯一事件識別碼")
     token: Optional[str] = Field(None, description="推播 token")
-    platform: str = Field(..., pattern="^(IOS|ANDROID|WEBPUSH)$", description="平台類型")
+    platform: Optional[str] = Field(None, pattern="^(IOS|ANDROID|WEBPUSH)$", description="平台類型")
     notification_title: str = Field(..., description="推播標題")
     notification_body: str = Field(..., description="推播內容")
-    status: str = Field(..., pattern="^(SENT|DELIVERED|FAILED)$", description="推播狀態")
+    status: str = Field(..., description="推播狀態")
     send_ts: Optional[int] = Field(None, description="送出時間戳")
     delivered_ts: Optional[int] = Field(None, description="送達時間戳")
     failed_ts: Optional[int] = Field(None, description="失敗時間戳")
     ap_id: Optional[str] = Field(None, description="來源服務識別碼")
     created_at: int = Field(..., description="建立時間戳")
+    sns_id: Optional[str] = Field(None, description="SNS 推播識別碼")
+
+    # UTC+8 時間字串欄位
+    send_time_utc8: Optional[str] = Field(None, description="送出時間 (UTC+8)")
+    delivered_time_utc8: Optional[str] = Field(None, description="送達時間 (UTC+8)")
+    failed_time_utc8: Optional[str] = Field(None, description="失敗時間 (UTC+8)")
+    created_time_utc8: Optional[str] = Field(None, description="建立時間 (UTC+8)")
 
 
 class QueryResult(BaseModel):
@@ -63,6 +88,7 @@ class QueryResult(BaseModel):
     data: List[NotificationRecord] = []
     message: str = ""
     total_count: int = 0
+    query_info: Optional[Dict[str, Any]] = None
 
 
 # ================================
@@ -74,11 +100,20 @@ class QueryPort(ABC):
     """查詢服務端口接口"""
 
     @abstractmethod
-    async def query_transaction_notifications(self, transaction_id: str) -> QueryResult:
+    async def query_transaction_notifications(
+        self, transaction_id: Optional[str] = None, limit: int = 30
+    ) -> QueryResult:
+        """查詢交易推播記錄"""
         pass
 
     @abstractmethod
-    async def query_failed_notifications(self, transaction_id: str) -> QueryResult:
+    async def query_failed_notifications(self, transaction_id: Optional[str] = None) -> QueryResult:
+        """查詢失敗推播記錄"""
+        pass
+
+    @abstractmethod
+    async def query_sns_notifications(self, sns_id: str) -> QueryResult:
+        """查詢 SNS 推播記錄"""
         pass
 
 
@@ -86,7 +121,18 @@ class InternalAPIInvokerPort(ABC):
     """Internal API Gateway 調用端口接口"""
 
     @abstractmethod
-    async def invoke_query_api(self, query_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    async def invoke_transaction_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """調用交易查詢端點"""
+        pass
+
+    @abstractmethod
+    async def invoke_failed_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """調用失敗查詢端點"""
+        pass
+
+    @abstractmethod
+    async def invoke_sns_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """調用 SNS 查詢端點"""
         pass
 
 
@@ -119,19 +165,21 @@ class InternalAPIAdapter(InternalAPIInvokerPort):
             return env != "production"
         return env in ("development", "test")
 
-    async def invoke_query_api(self, query_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-        """調用 Internal API Gateway 查詢端點"""
+    async def invoke_transaction_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """調用交易查詢端點"""
+        return await self._invoke_api_endpoint("/tx", payload)
+
+    async def invoke_failed_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """調用失敗查詢端點"""
+        return await self._invoke_api_endpoint("/fail", payload)
+
+    async def invoke_sns_query(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """調用 SNS 查詢端點"""
+        return await self._invoke_api_endpoint("/sns", payload)
+
+    async def _invoke_api_endpoint(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """統一的 API 端點調用方法 - 統一使用 GET 請求"""
         try:
-            # 根據查詢類型構建端點 URL - 使用 GET 方法的路徑
-            endpoint_map = {
-                "transaction": "/tx",
-                "fail": "/fail",
-            }
-
-            if query_type not in endpoint_map:
-                raise ValueError(f"Unsupported query type: {query_type}")
-
-            endpoint = endpoint_map[query_type]
             url = f"{self.internal_api_url}{endpoint}"
 
             logger.info(f"Invoking Internal API Gateway: {url}")
@@ -140,7 +188,7 @@ class InternalAPIAdapter(InternalAPIInvokerPort):
             # 準備請求標頭
             headers = {"Content-Type": "application/json", "User-Agent": "ECS-QueryService/1.0"}
 
-            # 發送 HTTP GET 請求到 Internal API Gateway（使用 query parameters）
+            # 統一使用 GET 方法 - 所有查詢都是 GET 語義
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(url, params=payload, headers=headers)
 
@@ -173,15 +221,24 @@ class InternalAPIAdapter(InternalAPIInvokerPort):
             raise HTTPException(
                 status_code=502, detail=f"Failed to connect to Internal API Gateway: {str(e)}"
             )
-        except ValueError as e:
-            logger.error(f"Invalid query type: {e}")
-            raise HTTPException(status_code=400, detail=str(e))
         except HTTPException:
             # 重新拋出 HTTPException，不要被通用 exception 處理器捕獲
             raise
         except Exception as e:
             logger.error(f"Unexpected error calling Internal API Gateway: {e}")
             raise HTTPException(status_code=500, detail=str(e))
+
+    # 舊方法保持向後兼容，但標記為 deprecated
+    async def invoke_query_api(self, query_type: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        """@deprecated: 使用專門的方法 invoke_transaction_query, invoke_failed_query, invoke_sns_query"""
+        if query_type == "tx" or query_type == "transaction":
+            return await self.invoke_transaction_query(payload)
+        elif query_type == "fail":
+            return await self.invoke_failed_query(payload)
+        elif query_type == "sns":
+            return await self.invoke_sns_query(payload)
+        else:
+            raise ValueError(f"Unsupported query type: {query_type}")
 
 
 # ================================
@@ -195,90 +252,156 @@ class QueryService(QueryPort):
     def __init__(self, internal_api_adapter: InternalAPIInvokerPort):
         self.internal_api_adapter = internal_api_adapter
 
-    async def query_transaction_notifications(self, transaction_id: str) -> QueryResult:
-        """查詢交易推播記錄"""
+    async def query_transaction_notifications(
+        self, transaction_id: Optional[str] = None, limit: int = 30
+    ) -> QueryResult:
+        """查詢交易推播記錄 - 支持可選 transaction_id 和限制筆數"""
         try:
-            payload = {"transaction_id": transaction_id}
-            result = await self.internal_api_adapter.invoke_query_api("transaction", payload)
+            # ECS 應該調用 Internal API Gateway 來查詢資料
+            payload: Dict[str, Any] = {}
+            if transaction_id:
+                payload["transaction_id"] = transaction_id
+            payload["limit"] = limit
 
-            return self._process_query_result(
-                result,
-                f"Successfully retrieved notifications for transaction: {transaction_id}",
+            response_data = await self.internal_api_adapter.invoke_transaction_query(payload)
+
+            if not response_data.get("success", False):
+                logger.warning(f"Query failed: {response_data}")
+                return QueryResult(
+                    success=False,
+                    message=response_data.get("message", "查詢失敗"),
+                    total_count=0,
+                )
+
+            items = response_data.get("items", [])
+            processed_records = await self._process_notification_records(items)
+
+            query_type = "specific" if transaction_id else "recent"
+            message = response_data.get("message", f"查詢完成 ({query_type})")
+
+            return QueryResult(
+                success=True,
+                data=processed_records,
+                message=message,
+                total_count=len(processed_records),
+                query_info=response_data.get(
+                    "query_info",
+                    {"transaction_id": transaction_id, "limit": limit, "query_type": query_type},
+                ),
             )
 
-        except HTTPException:
-            raise
         except Exception as e:
-            logger.error(f"Error querying transaction notifications for {transaction_id}: {e}")
-            raise HTTPException(
-                status_code=500, detail=f"Failed to query transaction notifications: {str(e)}"
-            )
+            logger.error(f"Error querying transaction notifications: {e}")
+            raise HTTPException(status_code=500, detail=f"查詢服務錯誤: {str(e)}")
 
     async def query_failed_notifications(self, transaction_id: Optional[str] = None) -> QueryResult:
         """查詢失敗推播記錄"""
         try:
-            payload = {}
+            payload: Dict[str, Any] = {}
             if transaction_id and transaction_id.strip():
                 payload["transaction_id"] = transaction_id
-                message_suffix = f"transaction: {transaction_id}"
-            else:
-                message_suffix = "all failed notifications"
 
-            result = await self.internal_api_adapter.invoke_query_api("fail", payload)
+            response_data = await self.internal_api_adapter.invoke_failed_query(payload)
 
-            return self._process_query_result(
-                result,
-                f"Successfully retrieved failed notifications for {message_suffix}",
-            )
+            if not response_data.get("success", False):
+                logger.warning(f"Failed query failed: {response_data}")
+                return QueryResult(
+                    success=False,
+                    message=response_data.get("message", "查詢失敗"),
+                    total_count=0,
+                )
 
-        except HTTPException:
-            raise
-        except Exception as e:
-            error_detail = (
-                f"transaction: {transaction_id}" if transaction_id else "all failed notifications"
-            )
-            logger.error(f"Error querying failed notifications for {error_detail}: {e}")
-            raise HTTPException(
-                status_code=500, detail=f"Failed to query failed notifications: {str(e)}"
-            )
-
-    def _process_query_result(self, result: Dict[str, Any], success_message: str) -> QueryResult:
-        """處理查詢結果的共用邏輯"""
-        try:
-            if not result.get("success", False):
-                error_message = result.get("message", "Query failed")
-                logger.warning(f"Query failed: {error_message}")
-                return QueryResult(success=False, message=error_message, data=[], total_count=0)
-
-            items = result.get("items", [])
-            logger.info(f"Query returned {len(items)} items")
-
-            # 轉換資料項目為 NotificationRecord 對象
-            notifications = []
-
-            for item in items:
-                try:
-                    notification = NotificationRecord(**item)
-                    notifications.append(notification)
-                except Exception as e:
-                    logger.warning(f"Failed to parse notification record: {e}, item: {item}")
-                    continue
+            items = response_data.get("items", [])
+            processed_records = await self._process_notification_records(items)
 
             return QueryResult(
                 success=True,
-                data=notifications,
-                message=success_message,
-                total_count=len(notifications),
+                data=processed_records,
+                message=response_data.get("message", "失敗記錄查詢完成"),
+                total_count=len(processed_records),
             )
 
         except Exception as e:
-            logger.error(f"Error processing query result: {e}")
+            logger.error(f"Error querying failed notifications: {e}")
+            raise HTTPException(status_code=500, detail=f"查詢服務錯誤: {str(e)}")
+
+    async def query_sns_notifications(self, sns_id: str) -> QueryResult:
+        """查詢 SNS 推播記錄"""
+        try:
+            payload: Dict[str, Any] = {"sns_id": sns_id}
+            response_data = await self.internal_api_adapter.invoke_sns_query(payload)
+
+            if not response_data.get("success", False):
+                logger.warning(f"SNS query failed: {response_data}")
+                return QueryResult(
+                    success=False,
+                    message=response_data.get("message", "查詢失敗"),
+                    total_count=0,
+                )
+
+            items = response_data.get("items", [])
+            processed_records = await self._process_notification_records(items)
+
             return QueryResult(
-                success=False,
-                message=f"Failed to process query result: {str(e)}",
-                data=[],
-                total_count=0,
+                success=True,
+                data=processed_records,
+                message=response_data.get("message", "SNS 推播記錄查詢完成"),
+                total_count=len(processed_records),
             )
+
+        except Exception as e:
+            logger.error(f"Error querying SNS notifications: {e}")
+            raise HTTPException(status_code=500, detail=f"查詢服務錯誤: {str(e)}")
+
+    async def _process_notification_records(
+        self, items: List[Dict[str, Any]]
+    ) -> List[NotificationRecord]:
+        """處理推播記錄並轉換時間戳為 UTC+8 格式"""
+        records = []
+
+        for item in items:
+            try:
+                # 轉換時間戳為 UTC+8 字串
+                send_time_utc8 = convert_timestamp_to_utc8_string(item.get("send_ts"))
+                delivered_time_utc8 = convert_timestamp_to_utc8_string(item.get("delivered_ts"))
+                failed_time_utc8 = convert_timestamp_to_utc8_string(item.get("failed_ts"))
+                created_time_utc8 = convert_timestamp_to_utc8_string(item.get("created_at"))
+
+                # 處理 platform 欄位：空字符串視為 None
+                platform = item.get("platform")
+                if platform == "":
+                    platform = None
+
+                record_data = {
+                    "transaction_id": item.get("transaction_id", ""),
+                    "token": item.get("token"),
+                    "platform": platform,
+                    "notification_title": item.get("notification_title", ""),
+                    "notification_body": item.get("notification_body", ""),
+                    "status": item.get("status", ""),
+                    "send_ts": item.get("send_ts"),
+                    "delivered_ts": item.get("delivered_ts"),
+                    "failed_ts": item.get("failed_ts"),
+                    "ap_id": str(item.get("ap_id")) if item.get("ap_id") is not None else None,
+                    "created_at": int(item.get("created_at", 0)),
+                    "sns_id": item.get("sns_id"),
+                    "send_time_utc8": send_time_utc8,
+                    "delivered_time_utc8": delivered_time_utc8,
+                    "failed_time_utc8": failed_time_utc8,
+                    "created_time_utc8": created_time_utc8,
+                }
+
+                # 只保留非 None 值
+                record_data = {k: v for k, v in record_data.items() if v is not None}
+
+                record = NotificationRecord(**record_data)
+                records.append(record)
+
+            except Exception as e:
+                logger.error(f"Error processing notification record: {e}, item: {item}")
+                continue
+
+        return records
 
 
 # ================================
@@ -293,6 +416,10 @@ class TransactionQueryRequest(BaseModel):
 
 class FailQueryRequest(BaseModel):
     transaction_id: Optional[str] = Field(None, min_length=1, description="交易ID（可選）")
+
+
+class SnsQueryRequest(BaseModel):
+    sns_id: str = Field(..., min_length=1, description="SNS 推播識別碼")
 
 
 # 全局單例實例
@@ -364,14 +491,23 @@ async def health_check() -> Dict[str, str]:
     }
 
 
-@app.post("/query/transaction", response_model=QueryResult)
+@app.post("/query/transaction", response_model=QueryResult, deprecated=True)
 async def query_transaction_notifications(
     request: TransactionQueryRequest, query_service: QueryService = Depends(get_query_service)
 ) -> QueryResult:
     """
-    根據 transaction_id 查詢交易推播記錄
+    根據 transaction_id 查詢交易推播記錄 (Legacy 端點)
 
-    - **transaction_id**: 交易唯一識別碼
+    **⚠️ DEPRECATED**: 建議使用 `GET /tx` 端點，支援更多功能
+
+    - **transaction_id**: 交易唯一識別碼（必填）
+
+    **限制**:
+    - 只支援特定 transaction_id 查詢
+    - 不支援最新記錄查詢
+    - 不支援 limit 參數
+
+    **推薦**: 使用 `GET /tx?transaction_id={id}&limit={num}` 獲得完整功能
     """
     logger.info(
         f"API: Querying transaction notifications for transaction: {request.transaction_id}"
@@ -387,17 +523,25 @@ async def query_transaction_notifications(
 
 @app.get("/tx")
 async def get_transaction_notifications_by_id(
-    transaction_id: str = Query(..., min_length=1, description="交易唯一識別碼"),
+    transaction_id: Optional[str] = Query(None, min_length=1, description="交易唯一識別碼（可選）"),
+    limit: int = Query(30, ge=1, le=100, description="查詢筆數限制（1-100，預設30）"),
     query_service: QueryService = Depends(get_query_service),
 ) -> QueryResult:
     """
-    根據 transaction_id 查詢交易推播記錄 (GET 方法)
+    根據 transaction_id 查詢交易推播記錄，或查詢最新記錄 (GET 方法)
 
-    - **transaction_id**: 交易唯一識別碼
+    - **transaction_id**: 交易唯一識別碼（可選）
+    - **limit**: 當未指定 transaction_id 時，返回最新記錄的數量限制
     """
-    logger.info(f"API: GET querying transaction notifications for transaction: {transaction_id}")
+    if transaction_id:
+        logger.info(
+            f"API: GET querying transaction notifications for transaction: {transaction_id}"
+        )
+    else:
+        logger.info(f"API: GET querying recent transaction notifications (limit: {limit})")
+
     try:
-        return await query_service.query_transaction_notifications(transaction_id)
+        return await query_service.query_transaction_notifications(transaction_id, limit)
     except HTTPException:
         raise
     except Exception as e:
@@ -448,6 +592,45 @@ async def get_failed_notifications(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
+@app.post("/query/sns", response_model=QueryResult)
+async def query_sns_notifications(
+    request: SnsQueryRequest, query_service: QueryService = Depends(get_query_service)
+) -> QueryResult:
+    """
+    根據 sns_id 查詢推播記錄
+
+    - **sns_id**: SNS 推播識別碼
+    """
+    logger.info(f"API: Querying SNS notifications for sns_id: {request.sns_id}")
+    try:
+        return await query_service.query_sns_notifications(request.sns_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in SNS query endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.get("/sns")
+async def get_sns_notifications_by_id(
+    sns_id: str = Query(..., min_length=1, description="SNS 推播識別碼"),
+    query_service: QueryService = Depends(get_query_service),
+) -> QueryResult:
+    """
+    根據 sns_id 查詢推播記錄 (GET 方法)
+
+    - **sns_id**: SNS 推播識別碼
+    """
+    logger.info(f"API: GET querying SNS notifications for sns_id: {sns_id}")
+    try:
+        return await query_service.query_sns_notifications(sns_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unexpected error in GET SNS query endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
 @app.get("/")
 async def root() -> Dict[str, Any]:
     """
@@ -460,8 +643,12 @@ async def root() -> Dict[str, Any]:
         "status": "healthy",
         "timestamp": datetime.now(UTC).isoformat(),
         "endpoints": {
-            "transaction_query": "/query/transaction",
+            "transaction_query": "/tx",  # 推薦使用 - 支援可選參數和最新記錄查詢
+            "transaction_query_legacy": "/query/transaction",  # Legacy - 僅支援特定交易查詢
             "failed_query": "/query/fail",
+            "failed_query_get": "/fail",  # GET 方法
+            "sns_query": "/query/sns",
+            "sns_query_get": "/sns",  # GET 方法
             "docs": "/docs",
             "health": "/health",
         },
