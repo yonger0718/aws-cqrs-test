@@ -219,6 +219,13 @@
             "format": "int64",
             "description": "Record creation timestamp (Unix timestamp)",
             "example": 1640995200
+          },
+          "retry_cnt": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of retry attempts",
+            "example": 2,
+            "default": 0
           }
         }
       },

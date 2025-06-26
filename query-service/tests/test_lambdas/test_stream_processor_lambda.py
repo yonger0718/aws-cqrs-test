@@ -52,6 +52,7 @@ class TestStreamProcessorLambda:
                             "marketing_id": {"S": "test-campaign"},
                             "device_token": {"S": "test-device-token"},
                             "ap_id": {"S": "ap-001"},
+                            "retry_cnt": {"N": "1"},
                         },
                         "SequenceNumber": "1",
                         "SizeBytes": 512,

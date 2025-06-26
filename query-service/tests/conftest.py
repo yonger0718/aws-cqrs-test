@@ -121,6 +121,7 @@ def sample_notification_records() -> List[Dict[str, Any]]:
             "delivered_ts": 1640995205,
             "ap_id": "app-1",
             "created_at": 1640995200,
+            "retry_cnt": 0,
         },
         {
             "transaction_id": "test-txn-failed",
@@ -133,6 +134,7 @@ def sample_notification_records() -> List[Dict[str, Any]]:
             "failed_ts": 1640995305,
             "ap_id": "app-2",
             "created_at": 1640995300,
+            "retry_cnt": 3,
         },
     ]
 

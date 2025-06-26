@@ -88,6 +88,7 @@ def notification_records_table_with_data(notification_records_table: Any) -> Any
             "notification_title": "新年促銷",
             "status": "DELIVERED",
             "platform": "IOS",
+            "retry_cnt": 0,
         },
         {
             "user_id": "user123",
@@ -97,6 +98,7 @@ def notification_records_table_with_data(notification_records_table: Any) -> Any
             "notification_title": "限時優惠",
             "status": "SENT",
             "platform": "ANDROID",
+            "retry_cnt": 1,
         },
         {
             "user_id": "user456",
@@ -107,6 +109,7 @@ def notification_records_table_with_data(notification_records_table: Any) -> Any
             "status": "FAILED",
             "platform": "WEBPUSH",
             "error_msg": "Device token invalid",
+            "retry_cnt": 3,
         },
     ]
 

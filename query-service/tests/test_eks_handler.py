@@ -512,6 +512,7 @@ class TestQueryService:
                     "failed_ts": 1640995200,
                     "ap_id": "mobile-app-001",
                     "created_at": 1640995200,
+                    "retry_cnt": 3,
                 }
             ],
         }

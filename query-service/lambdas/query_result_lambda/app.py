@@ -143,7 +143,7 @@ class QueryService:
                     ProjectionExpression=(
                         "transaction_id, #token, platform, notification_title, "
                         "notification_body, #status, send_ts, delivered_ts, "
-                        "failed_ts, ap_id, created_at, sns_id"
+                        "failed_ts, ap_id, created_at, sns_id, retry_cnt"
                     ),
                     ExpressionAttributeNames={"#token": "token", "#status": "status"},
                     Limit=limit * 2,  # 多掃描一些以確保有足夠記錄排序
@@ -227,7 +227,7 @@ class QueryService:
                     ProjectionExpression=(
                         "transaction_id, #token, platform, notification_title, "
                         "notification_body, #status, send_ts, delivered_ts, "
-                        "failed_ts, ap_id, created_at"
+                        "failed_ts, ap_id, created_at, retry_cnt"
                     ),
                     ExpressionAttributeNames={"#token": "token", "#status": "status"},
                 )
@@ -283,7 +283,7 @@ class QueryService:
                 ProjectionExpression=(
                     "transaction_id, #token, platform, notification_title, "
                     "notification_body, #status, send_ts, delivered_ts, "
-                    "failed_ts, ap_id, created_at, sns_id"
+                    "failed_ts, ap_id, created_at, sns_id, retry_cnt"
                 ),
                 ExpressionAttributeNames={"#token": "token", "#status": "status"},
             )
@@ -343,6 +343,15 @@ def format_notification_items(items: list) -> list:
                 except (ValueError, TypeError):
                     return None
 
+            # 安全的數值轉換函數
+            def safe_int_convert(value: Any) -> Optional[int]:
+                if value is None or value == "":
+                    return None
+                try:
+                    return int(value)
+                except (ValueError, TypeError):
+                    return None
+
             formatted_item = {
                 "transaction_id": item.get("transaction_id"),
                 "token": item.get("token"),
@@ -356,6 +365,7 @@ def format_notification_items(items: list) -> list:
                 "ap_id": item.get("ap_id"),
                 "created_at": safe_timestamp_convert(item.get("created_at")) or 0,
                 "sns_id": item.get("sns_id"),
+                "retry_cnt": safe_int_convert(item.get("retry_cnt")) or 0,
             }
 
             # 添加 UTC+8 時間戳轉換

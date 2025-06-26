@@ -50,6 +50,9 @@
                   },
                   "ap_id": {
                     "S": "ap-001"
+                  },
+                  "retry_cnt": {
+                    "N": "0"
                   }
                 },
                 "SequenceNumber": "1",
@@ -162,6 +165,9 @@
                   },
                   "error_msg": {
                     "S": "Invalid device token"
+                  },
+                  "retry_cnt": {
+                    "N": "3"
                   }
                 },
                 "SequenceNumber": "3",

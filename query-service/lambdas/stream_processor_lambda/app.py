@@ -52,6 +52,7 @@ class CommandRecord:
     error_msg: Optional[str]
     ap_id: Optional[str]
     sns_id: Optional[str] = None
+    retry_cnt: int = 0
 
 
 @dataclass
@@ -68,6 +69,7 @@ class QueryRecord:
     error_msg: Optional[str]
     ap_id: Optional[str]
     sns_id: Optional[str] = None
+    retry_cnt: int = 0
 
 
 def get_dynamodb_resource() -> Any:
@@ -170,6 +172,7 @@ def parse_command_record(dynamo_record: Dict[str, Any]) -> CommandRecord:
             error_msg=extract_value(dynamo_record, "error_msg"),
             ap_id=extract_value(dynamo_record, "ap_id"),
             sns_id=extract_value(dynamo_record, "sns_id"),
+            retry_cnt=extract_value(dynamo_record, "retry_cnt", 0),
         )
     except (ValueError, KeyError) as e:
         logger.error(
@@ -194,6 +197,7 @@ def transform_to_query_record(command_record: CommandRecord) -> QueryRecord:
         error_msg=command_record.error_msg,
         ap_id=command_record.ap_id,
         sns_id=command_record.sns_id,
+        retry_cnt=command_record.retry_cnt,
     )
 
 
@@ -220,6 +224,8 @@ def save_query_record(query_record: QueryRecord) -> None:
             item["ap_id"] = query_record.ap_id
         if query_record.sns_id:
             item["sns_id"] = query_record.sns_id
+        if query_record.retry_cnt > 0:
+            item["retry_cnt"] = query_record.retry_cnt
 
         table.put_item(Item=item)
         logger.info(f"Successfully saved query record: {query_record.transaction_id}")

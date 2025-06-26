@@ -73,6 +73,7 @@ class NotificationRecord(BaseModel):
     ap_id: Optional[str] = Field(None, description="來源服務識別碼")
     created_at: int = Field(..., description="建立時間戳")
     sns_id: Optional[str] = Field(None, description="SNS 推播識別碼")
+    retry_cnt: int = Field(default=0, description="重送次數")
 
     # UTC+8 時間字串欄位
     send_time_utc8: Optional[str] = Field(None, description="送出時間 (UTC+8)")
@@ -372,6 +373,15 @@ class QueryService(QueryPort):
                 if platform == "":
                     platform = None
 
+                # 安全處理 retry_cnt 欄位
+                retry_cnt = item.get("retry_cnt", 0)
+                if retry_cnt is None:
+                    retry_cnt = 0
+                try:
+                    retry_cnt = int(retry_cnt)
+                except (ValueError, TypeError):
+                    retry_cnt = 0
+
                 record_data = {
                     "transaction_id": item.get("transaction_id", ""),
                     "token": item.get("token"),
@@ -385,6 +395,7 @@ class QueryService(QueryPort):
                     "ap_id": str(item.get("ap_id")) if item.get("ap_id") is not None else None,
                     "created_at": int(item.get("created_at", 0)),
                     "sns_id": item.get("sns_id"),
+                    "retry_cnt": retry_cnt,
                     "send_time_utc8": send_time_utc8,
                     "delivered_time_utc8": delivered_time_utc8,
                     "failed_time_utc8": failed_time_utc8,

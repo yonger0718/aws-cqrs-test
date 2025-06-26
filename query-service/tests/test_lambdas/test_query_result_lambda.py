@@ -74,6 +74,7 @@ class TestQueryResultLambda(unittest.TestCase):
                 "notification_title": "測試推播",
                 "status": "DELIVERED",
                 "platform": "IOS",
+                "retry_cnt": 2,
             }
         ]
 
@@ -84,6 +85,49 @@ class TestQueryResultLambda(unittest.TestCase):
         self.assertEqual(item["transaction_id"], "tx_001")
         self.assertEqual(item["created_at"], 1704038400000)
         self.assertEqual(item["notification_title"], "測試推播")
+        self.assertEqual(item["retry_cnt"], 2)
+
+    @mock_dynamodb
+    def test_format_notification_items_missing_retry_cnt(self) -> None:
+        """測試缺少 retry_cnt 欄位時的預設值處理"""
+        items = [
+            {
+                "user_id": "test_user",
+                "created_at": 1704038400000,
+                "transaction_id": "tx_002",
+                "notification_title": "測試推播無重送次數",
+                "status": "SENT",
+                "platform": "ANDROID",
+                # 故意省略 retry_cnt
+            }
+        ]
+
+        formatted = app.format_notification_items(items)
+
+        self.assertEqual(len(formatted), 1)
+        item = formatted[0]
+        self.assertEqual(item["retry_cnt"], 0)  # 應該是預設值 0
+
+    @mock_dynamodb
+    def test_format_notification_items_invalid_retry_cnt(self) -> None:
+        """測試無效 retry_cnt 值的處理"""
+        items = [
+            {
+                "user_id": "test_user",
+                "created_at": 1704038400000,
+                "transaction_id": "tx_003",
+                "notification_title": "測試推播無效重送次數",
+                "status": "FAILED",
+                "platform": "WEBPUSH",
+                "retry_cnt": "invalid_value",  # 無效值
+            }
+        ]
+
+        formatted = app.format_notification_items(items)
+
+        self.assertEqual(len(formatted), 1)
+        item = formatted[0]
+        self.assertEqual(item["retry_cnt"], 0)  # 應該轉為預設值 0
 
     def test_missing_parameters(self) -> None:
         """測試缺少必要參數的情況"""
