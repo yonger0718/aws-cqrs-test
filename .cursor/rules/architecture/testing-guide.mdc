@@ -1,0 +1,261 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 測試指南
+
+## 🧪 測試框架概覽
+
+本專案使用 **pytest** 作為主要測試框架，配合多種測試工具實現完整的測試覆蓋。
+
+### 測試架構
+- **測試框架**: pytest + pytest-asyncio
+- **覆蓋率工具**: pytest-cov
+- **Mock 框架**: unittest.mock + moto (AWS 服務模擬)
+- **HTTP 客戶端**: httpx (用於 API 測試)
+
+## 📁 測試檔案結構
+
+### 主要測試檔案
+- **[test_eks_handler.py](mdc:query-service/tests/test_eks_handler.py)** - FastAPI 服務測試
+- **[test_integration.py](mdc:query-service/tests/test_integration.py)** - 整合測試
+- **[conftest.py](mdc:query-service/tests/conftest.py)** - 測試配置與 fixtures
+- **[test_lambdas/](mdc:query-service/tests/test_lambdas)** - Lambda 函數測試
+
+### 測試配置檔案
+- **[pyproject.toml](mdc:pyproject.toml)** - pytest 配置、覆蓋率設定
+- **[requirements-test.txt](mdc:query-service/tests/requirements-test.txt)** - 測試專用依賴
+
+## 🎯 測試類型與執行
+
+### 1. 單元測試 (Unit Tests)
+```bash
+# 執行所有單元測試
+poetry run pytest -m unit
+
+# 執行特定測試檔案
+poetry run pytest query-service/tests/test_eks_handler.py -v
+
+# 執行特定測試函數
+poetry run pytest query-service/tests/test_eks_handler.py::test_health_check -v
+```
+
+### 2. 整合測試 (Integration Tests)
+```bash
+# 執行整合測試
+poetry run pytest -m integration
+
+# 執行 API 整合測試
+poetry run pytest query-service/tests/test_integration.py -v
+```
+
+### 3. 覆蓋率測試
+```bash
+# 生成覆蓋率報告
+poetry run pytest --cov=query-service/eks_handler --cov-report=html
+
+# 檢視 HTML 覆蓋率報告
+open htmlcov/index.html
+
+# 終端顯示覆蓋率
+poetry run pytest --cov=query-service/eks_handler --cov-report=term-missing
+```
+
+### 4. 完整測試套件
+```bash
+# 執行所有測試
+poetry run pytest
+
+# 快速測試 (排除慢速測試)
+poetry run pytest -m "not slow"
+
+# 並行測試 (加速執行)
+poetry run pytest -n auto
+```
+
+## 🛠️ 測試工具與腳本
+
+### 自動化測試腳本
+```bash
+# 快速系統驗證
+./scripts/testing/quick_test.sh
+
+# 完整流程測試
+./scripts/testing/test_full_flow.sh
+
+# Lambda 函數測試
+./scripts/testing/test_lambda_deployment.sh
+```
+
+### 專案特定測試工具
+```bash
+# EKS Handler 測試
+python query-service/test_ecs_architecture.py
+
+# Lambda 測試
+python query-service/test_lambda.py
+
+# 驗證改進
+python query-service/validate_improvements.py
+```
+
+## 📋 測試 Markers
+
+### 可用的測試標記
+```python
+@pytest.mark.unit          # 單元測試
+@pytest.mark.integration   # 整合測試
+@pytest.mark.slow          # 慢速測試
+```
+
+### 使用範例
+```bash
+# 只執行單元測試
+pytest -m unit
+
+# 排除慢速測試
+pytest -m "not slow"
+
+# 執行整合測試
+pytest -m integration
+```
+
+## 🔧 測試配置重點
+
+### pytest 配置 ([pyproject.toml](mdc:pyproject.toml))
+```toml
+[tool.pytest.ini_options]
+testpaths = ["query-service/tests"]
+asyncio_mode = "auto"
+addopts = [
+    "--strict-markers",
+    "--cov=query-service/eks_handler",
+    "--cov-fail-under=60"
+]
+```
+
+### 覆蓋率配置
+```toml
+[tool.coverage.run]
+source = ["query-service/eks_handler"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "@abstractmethod"]
+```
+
+## 🎯 測試最佳實踐
+
+### 1. 測試結構
+```python
+# AAA 模式: Arrange, Act, Assert
+async def test_query_transaction():
+    # Arrange - 準備測試資料
+    transaction_id = "tx_001"
+
+    # Act - 執行測試動作
+    result = await query_service.query_transaction(transaction_id)
+
+    # Assert - 驗證結果
+    assert result.success is True
+    assert len(result.data) > 0
+```
+
+### 2. Fixtures 使用
+```python
+# 使用共用 fixtures ([conftest.py](mdc:query-service/tests/conftest.py))
+async def test_api_endpoint(client, mock_lambda_adapter):
+    response = await client.get("/tx?transaction_id=tx_001")
+    assert response.status_code == 200
+```
+
+### 3. Mock 策略
+```python
+# Mock 外部依賴
+@patch('eks_handler.main.InternalAPIAdapter')
+async def test_with_mocked_adapter(mock_adapter):
+    mock_adapter.return_value.invoke_transaction_query.return_value = {...}
+    # 測試邏輯
+```
+
+### 4. 異步測試
+```python
+# 使用 pytest-asyncio 處理異步函數
+@pytest.mark.asyncio
+async def test_async_function():
+    result = await some_async_function()
+    assert result is not None
+```
+
+## 🐛 常見測試場景
+
+### API 端點測試
+```python
+async def test_health_check_endpoint(client):
+    """測試健康檢查端點"""
+    response = await client.get("/health")
+    assert response.status_code == 200
+    assert response.json()["status"] == "healthy"
+```
+
+### 服務層測試
+```python
+async def test_query_service_logic(mock_adapter):
+    """測試查詢服務邏輯"""
+    query_service = QueryService(mock_adapter)
+    result = await query_service.query_transaction_notifications("tx_001")
+    assert result.success is True
+```
+
+### 錯誤處理測試
+```python
+async def test_error_handling(client):
+    """測試錯誤處理"""
+    response = await client.get("/tx?transaction_id=")
+    assert response.status_code == 422  # Validation error
+```
+
+### Lambda 函數測試
+```python
+def test_lambda_handler(lambda_event):
+    """測試 Lambda 函數處理器"""
+    result = lambda_handler(lambda_event, None)
+    assert result["statusCode"] == 200
+```
+
+## 📊 測試報告與分析
+
+### 覆蓋率報告
+- **HTML 報告**: `htmlcov/index.html`
+- **XML 報告**: `coverage.xml` (用於 CI/CD)
+- **終端報告**: 執行時顯示
+
+### 測試結果分析
+```bash
+# 詳細測試報告
+pytest --tb=long -v
+
+# 失敗測試除錯
+pytest --lf --tb=short  # 只重跑失敗的測試
+
+# 效能分析
+pytest --durations=10  # 顯示最慢的 10 個測試
+```
+
+## 🚀 CI/CD 整合
+
+### GitHub Actions
+- 自動執行測試套件
+- 生成覆蓋率報告
+- 上傳到 Codecov
+
+### Pre-commit Hooks
+- 測試執行檢查
+- 程式碼品質驗證
+- 自動格式化
+
+### 測試閾值
+- **最小覆蓋率**: 60%
+- **測試必須通過**: 所有測試
+- **程式碼品質**: 符合 flake8、mypy 標準

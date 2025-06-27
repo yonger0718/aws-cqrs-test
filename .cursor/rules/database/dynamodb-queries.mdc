@@ -5,61 +5,157 @@ alwaysApply: false
 ---
 # DynamoDB 查詢模式指南
 
-## 📋 CQRS 查詢模式
+## 📋 主要查詢模式 (基於實際實現)
 
-### 1. 用戶查詢 (`notification-records` 主表)
+### 1. 按交易ID查詢 (Primary Query Pattern)
 ```python
-# 查詢特定用戶的所有推播記錄
-table.query(
-    KeyConditionExpression=Key('user_id').eq('test_user_001'),
-    ScanIndexForward=False,  # 最新記錄優先
-    Limit=20  # 分頁查詢
+# 主鍵查詢 - 使用 transaction_id 作為唯一鍵查詢單筆記錄
+table.get_item(Key={"transaction_id": "tx_001"})
+
+# 批量查詢所有記錄 (無特定過濾條件)
+table.scan(
+    ProjectionExpression="transaction_id, device_token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, sns_id, retry_cnt",
+    ExpressionAttributeNames={"#status": "status"},
+    Limit=30
 )
 ```
 
-### 2. 行銷活動查詢 (`marketing_id-index` GSI)
-```python
-# 查詢特定活動的推播統計
-table.query(
-    IndexName='marketing_id-index',
-    KeyConditionExpression=Key('marketing_id').eq('campaign_2024_new_year'),
-    FilterExpression=Attr('status').eq('DELIVERED')  # 過濾成功記錄
-)
-```
-
-### 3. 失敗記錄查詢 (`transaction_id-status-index` GSI)
+### 2. 失敗記錄查詢 (Failed Notifications Query)
 ```python
 # 查詢特定交易的失敗記錄
+response = table.get_item(Key={"transaction_id": transaction_id})
+item = response.get("Item")
+if item and item.get("status") == "FAILED":
+    return [item]
+
+# 查詢所有失敗記錄 (使用 scan + filter)
+table.scan(
+    FilterExpression=Attr("status").eq("FAILED"),
+    ProjectionExpression="transaction_id, device_token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, retry_cnt",
+    ExpressionAttributeNames={"#status": "status"}
+)
+
+# 如果有 status-index GSI，可以使用 query (效能更好)
 table.query(
-    IndexName='transaction_id-status-index',
-    KeyConditionExpression=Key('transaction_id').eq('tx_001') & Key('status').eq('FAILED')
+    IndexName='status-index',
+    KeyConditionExpression='#status = :status',
+    ExpressionAttributeNames={'#status': 'status'},
+    ExpressionAttributeValues={':status': 'FAILED'}
 )
 ```
 
-## 🧪 測試資料範例
+### 3. SNS 推播查詢 (SNS-based Query)
+```python
+# 使用 scan 加 filter 查詢 SNS 記錄
+table.scan(
+    FilterExpression=Attr("sns_id").eq(sns_id),
+    ProjectionExpression="transaction_id, device_token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, sns_id, retry_cnt",
+    ExpressionAttributeNames={"#status": "status"}
+)
+```
+
+## 🎯 查詢最佳化策略
+
+### 基於實際 API 端點設計
+- **`/tx` 端點**: 使用 `get_item` 或 `scan` (依是否提供 transaction_id)
+- **`/fail` 端點**: 使用 `get_item` + status 檢查或 `scan` + filter
+- **`/sns` 端點**: 使用 `scan` + filter (效能較差，建議加入 GSI)
+
+### 效能考量
+```python
+# 推薦：使用 get_item 進行點查詢 (最快)
+table.get_item(Key={"transaction_id": "tx_001"})
+
+# 謹慎使用：scan 操作 (較慢，會掃描整表)
+table.scan(FilterExpression=Attr("status").eq("FAILED"))
+```
+
+## 🧪 測試資料範例 (基於實際架構)
 
 ### Command Table (`command-records`) 測試資料
-- **`tx_001`**: 成功推播 (test_user_001, IOS, DELIVERED)
-- **`tx_002`**: 失敗推播 (test_user_002, ANDROID, FAILED)
-- **`tx_003`**: Web推播 (test_user_001, WEBPUSH, SENT)
-- **`tx_004`**: 網路逾時 (test_user_003, IOS, FAILED)
+```json
+{
+  "transaction_id": "tx-ios-001",
+  "created_at": 1732000000,
+  "notification_title": "Welcome to our app!",
+  "notification_body": "Get started with our amazing features!",
+  "status": "SENT",
+  "platform": "IOS",
+  "device_token": "apns-device-token-123",
+  "ap_id": "ap-001",
+  "sns_id": "sns-12345",
+  "retry_cnt": 0,
+  "send_ts": 1732000000,
+  "delivered_ts": 1732000010
+}
+```
 
 ### Query Table (`notification-records`) 同步資料
-- Stream 處理後的最佳化查詢資料
-- 移除 `device_token` 和 `payload` 欄位
-- 保留查詢必要資訊
+```json
+{
+  "transaction_id": "tx-ios-001",
+  "created_at": 1732000000,
+  "notification_title": "Welcome to our app!",
+  "notification_body": "Get started with our amazing features!",
+  "status": "SENT",
+  "platform": "IOS",
+  "ap_id": "ap-001",
+  "sns_id": "sns-12345",
+  "retry_cnt": 0,
+  "send_ts": 1732000000,
+  "delivered_ts": 1732000010
+}
+```
+
+**注意**: Query Side 可能會移除敏感欄位 (`device_token`, `payload`)
 
 ## 📊 資料一致性監控
 
-### 同步率檢查
+### 同步狀態檢查 (LocalStack)
 ```bash
 # Command Table 記錄數
-aws dynamodb scan --table-name command-records --select COUNT
+awslocal dynamodb scan --table-name command-records --select COUNT --endpoint-url http://localhost:4566
 
 # Query Table 記錄數
-aws dynamodb scan --table-name notification-records --select COUNT
+awslocal dynamodb scan --table-name notification-records --select COUNT --endpoint-url http://localhost:4566
+
+# 檢查 Stream 狀態
+awslocal dynamodb describe-table --table-name command-records --endpoint-url http://localhost:4566
 ```
 
-### 建議同步率
-- **目標**: > 85% (考慮異步處理延遲)
-- **監控**: 定期檢查兩表記錄數差異
+### Stream 處理監控
+```python
+# 檢查 Stream Processor Lambda 日誌
+docker logs query-service-stream-processor-lambda-1
+
+# 查看處理狀態
+logger.info(f"Successfully processed {processed}/{len(records)} records")
+```
+
+## 🔧 開發工具指令
+
+### 本地測試查詢
+```bash
+# 使用專案查詢工具
+./scripts/queries/test_query.sh
+
+# 手動測試 API
+curl "http://localhost:8000/tx?transaction_id=tx_001"
+curl "http://localhost:8000/fail"
+curl "http://localhost:8000/sns?sns_id=sns-12345"
+```
+
+### DynamoDB 直接操作
+```bash
+# 插入測試資料
+awslocal dynamodb put-item --table-name command-records --item file://test-data.json
+
+# 查詢特定記錄
+awslocal dynamodb get-item --table-name notification-records --key '{"transaction_id":{"S":"tx_001"}}'
+```

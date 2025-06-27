@@ -1,52 +1,106 @@
 ---
-description: when searching for files
+description:
 globs:
 alwaysApply: false
 ---
 # 文件導航指南
 
-## 核心文件結構
+## 📁 專案結構概覽
 
-### 主要服務代碼
-- [query-service/eks_handler/](mdc:query-service/eks_handler): FastAPI 主要服務
-- [query-service/lambdas/](mdc:query-service/lambdas): AWS Lambda 函數
-- [query-service/infra/](mdc:query-service/infra): 基礎設施代碼
+### 核心服務目錄
 
-### 腳本工具
-- [scripts/testing/](mdc:scripts/testing): 測試腳本集合
-- [scripts/queries/](mdc:scripts/queries): 查詢工具腳本
-- [scripts/verification/](mdc:scripts/verification): 環境驗證腳本
-- [scripts/development/](mdc:scripts/development): 開發輔助腳本
+#### 🚀 Query Service (查詢服務)
+- **主要入口**: [query-service/eks_handler/main.py](mdc:query-service/eks_handler/main.py)
+  - FastAPI 應用程式主文件
+  - 六邊形架構實現
+  - API 端點定義
 
-### 文檔資源
-- [docs/testing/](mdc:docs/testing): 測試相關文檔
-- [docs/guides/](mdc:docs/guides): 使用指南
-- [docs/architecture/](mdc:docs/architecture): 架構文檔
-- [docs/project/](mdc:docs/project): 專案總結
+- **Lambda 函數**: [query-service/lambdas/](mdc:query-service/lambdas)
+  - [stream_processor_lambda/](mdc:query-service/lambdas/stream_processor_lambda) - DynamoDB Stream 處理器
+  - [query_lambda/](mdc:query-service/lambdas/query_lambda) - 查詢處理 Lambda
+  - [query_result_lambda/](mdc:query-service/lambdas/query_result_lambda) - 查詢結果處理
 
-## 重要配置文件
+#### 🧪 測試文件
+- **主要測試**: [query-service/tests/test_eks_handler.py](mdc:query-service/tests/test_eks_handler.py)
+  - FastAPI 服務的完整測試套件
+  - 單元測試與整合測試
 
-### Docker & 部署
-- [query-service/docker-compose.yml](mdc:query-service/docker-compose.yml): Docker 服務編排
-- [query-service/requirements.txt](mdc:query-service/requirements.txt): Python 依賴管理
+- **整合測試**: [query-service/tests/test_integration.py](mdc:query-service/tests/test_integration.py)
+  - 端到端測試流程
+  - API 整合驗證
 
-### 測試配置
-- [pytest.ini](mdc:pytest.ini): pytest 測試配置
-- [codecov.yml](mdc:codecov.yml): 代碼覆蓋率配置
+- **測試配置**: [query-service/tests/conftest.py](mdc:query-service/tests/conftest.py)
+  - pytest 配置和共用 fixtures
 
-### 開發工具
-- [.pre-commit-config.yaml](mdc:.pre-commit-config.yaml): Git pre-commit 鉤子
-- [.markdownlint.json](mdc:.markdownlint.json): Markdown 格式檢查
-- [.gitignore](mdc:.gitignore): Git 忽略規則
+#### ⚙️ 基礎設施與部署
+- **Docker**: [query-service/docker-compose.yml](mdc:query-service/docker-compose.yml)
+  - 本地開發環境配置
+  - LocalStack 整合
 
-## 快速訪問
+- **ECS 配置**: [query-service/infra/ecs/](mdc:query-service/infra/ecs)
+  - 容器化部署配置
 
-### 立即開始開發
-1. 閱讀 [README.md](mdc:README.md) 了解專案概述
-2. 查看 [query-service/README.md](mdc:query-service/README.md) 了解服務細節
-3. 執行 [scripts/restart_services.sh](mdc:scripts/restart_services.sh) 啟動環境
+- **API Gateway**: [query-service/infra/api-gateway/](mdc:query-service/infra/api-gateway)
+  - API 閘道器配置
 
-### 常用操作文件
-- [scripts/restart_services.sh](mdc:scripts/restart_services.sh): 重啟所有服務
-- [scripts/fix_api_gateway.sh](mdc:scripts/fix_api_gateway.sh): 修復 API Gateway
-- [scripts/testing/quick_test.sh](mdc:scripts/testing/quick_test.sh): 快速測試驗證
+### 🛠️ 自動化腳本
+
+#### 部署腳本
+- **服務重啟**: [scripts/deployment/restart_services.sh](mdc:scripts/deployment)
+- **Docker 部署**: [query-service/deploy_docker.sh](mdc:query-service/deploy_docker.sh)
+
+#### 測試腳本
+- **完整測試**: [scripts/testing/test_full_flow.sh](mdc:scripts/testing)
+- **快速驗證**: [scripts/testing/quick_test.sh](mdc:scripts/testing)
+
+#### 查詢工具
+- **查詢測試**: [scripts/queries/test_query.sh](mdc:scripts/queries)
+- **簡化查詢**: [scripts/queries/simple_query.sh](mdc:scripts/queries)
+
+#### 基礎設施管理
+- **API Gateway 修復**: [scripts/infrastructure/fix_api_gateway.sh](mdc:scripts/infrastructure)
+- **系統驗證**: [scripts/verification/verify_system.sh](mdc:scripts/verification)
+
+### 📋 配置文件
+
+#### 專案配置
+- **Poetry 依賴**: [pyproject.toml](mdc:pyproject.toml)
+  - Python 依賴管理
+  - 測試配置
+  - 程式碼品質工具設定
+
+- **Pre-commit**: [.pre-commit-config.yaml](mdc:.pre-commit-config.yaml)
+  - 程式碼品質檢查
+  - 自動格式化
+
+#### 開發工具
+- **Makefile**: [Makefile](mdc:Makefile)
+  - 常用指令簡化
+  - 開發流程自動化
+
+### 📚 文檔與指南
+
+#### 專案文檔
+- **主要 README**: [README.md](mdc:README.md)
+  - 專案概覽與快速開始
+  - 架構說明
+
+- **Lambda 測試指南**: [query-service/LAMBDA_TESTING_GUIDE.md](mdc:query-service/LAMBDA_TESTING_GUIDE.md)
+  - Lambda 函數測試方法
+
+#### 開發指南
+- **測試說明**: [query-service/tests/README.md](mdc:query-service/tests/README.md)
+  - 測試架構與執行方式
+
+- **腳本文檔**: [scripts/README.md](mdc:scripts/README.md)
+  - 自動化腳本使用說明
+
+## 🔍 快速定位指南
+
+### 想要...
+- **修改 API 端點**: 查看 [main.py](mdc:query-service/eks_handler/main.py)
+- **新增測試**: 編輯 [test_eks_handler.py](mdc:query-service/tests/test_eks_handler.py)
+- **調整 Lambda**: 前往 [lambdas/](mdc:query-service/lambdas) 目錄
+- **修改依賴**: 編輯 [pyproject.toml](mdc:pyproject.toml)
+- **部署相關**: 查看 [scripts/deployment/](mdc:scripts/deployment) 或 [deploy_docker.sh](mdc:query-service/deploy_docker.sh)
+- **基礎設施**: 前往 [query-service/infra/](mdc:query-service/infra) 目錄

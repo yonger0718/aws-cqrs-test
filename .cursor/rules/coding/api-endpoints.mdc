@@ -1,0 +1,295 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# API 端點指南
+
+## 🌐 FastAPI 服務 API 端點
+
+本專案的 FastAPI 服務 ([main.py](mdc:query-service/eks_handler/main.py)) 提供完整的 RESTful API，支援推播通知查詢功能。
+
+### 📋 API 文檔存取
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
+
+## 🎯 核心查詢端點
+
+### 1. 健康檢查
+```http
+GET /health
+```
+**功能**: 檢查服務健康狀態
+**回應**:
+```json
+{
+  "status": "healthy",
+  "timestamp": "2024-01-15T10:30:00Z",
+  "version": "4.2.0"
+}
+```
+
+### 2. 交易推播查詢
+
+#### GET 方式 (推薦)
+```http
+GET /tx?transaction_id={id}&limit={number}
+```
+**參數**:
+- `transaction_id` (可選): 交易唯一識別碼
+- `limit` (可選): 查詢筆數限制 (1-100，預設30)
+
+**範例**:
+```bash
+# 查詢特定交易
+curl "http://localhost:8000/tx?transaction_id=tx_001"
+
+# 查詢多筆記錄
+curl "http://localhost:8000/tx?limit=50"
+
+# 查詢所有記錄
+curl "http://localhost:8000/tx"
+```
+
+#### POST 方式 (已棄用)
+```http
+POST /query/transaction
+Content-Type: application/json
+
+{
+  "transaction_id": "tx_001"
+}
+```
+
+### 3. 失敗推播查詢
+
+#### GET 方式 (推薦)
+```http
+GET /fail?transaction_id={id}
+```
+**參數**:
+- `transaction_id` (可選): 交易唯一識別碼
+
+**範例**:
+```bash
+# 查詢特定失敗記錄
+curl "http://localhost:8000/fail?transaction_id=tx_002"
+
+# 查詢所有失敗記錄
+curl "http://localhost:8000/fail"
+```
+
+#### POST 方式
+```http
+POST /query/fail
+Content-Type: application/json
+
+{
+  "transaction_id": "tx_002"
+}
+```
+
+### 4. SNS 推播查詢
+
+#### GET 方式 (推薦)
+```http
+GET /sns?sns_id={id}
+```
+**參數**:
+- `sns_id` (必填): SNS 推播識別碼
+
+**範例**:
+```bash
+curl "http://localhost:8000/sns?sns_id=sns-12345"
+```
+
+#### POST 方式
+```http
+POST /query/sns
+Content-Type: application/json
+
+{
+  "sns_id": "sns-12345"
+}
+```
+
+### 5. 根端點
+```http
+GET /
+```
+**功能**: API 服務資訊與可用端點列表
+
+## 📊 統一回應格式
+
+所有查詢端點都返回統一的 `QueryResult` 格式：
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "transaction_id": "tx_001",
+      "token": "device_token_123",
+      "platform": "IOS",
+      "notification_title": "測試推播",
+      "notification_body": "這是測試訊息",
+      "status": "delivered",
+      "send_ts": 1640995200000,
+      "delivered_ts": 1640995260000,
+      "failed_ts": null,
+      "ap_id": "app_001",
+      "created_at": 1640995200000,
+      "sns_id": "sns-12345",
+      "retry_cnt": 0,
+      "send_time_utc8": "2022-01-01 12:00:00 UTC+8",
+      "delivered_time_utc8": "2022-01-01 12:01:00 UTC+8",
+      "failed_time_utc8": null,
+      "created_time_utc8": "2022-01-01 12:00:00 UTC+8"
+    }
+  ],
+  "message": "查詢成功",
+  "total_count": 1,
+  "query_info": {
+    "query_type": "transaction",
+    "transaction_id": "tx_001",
+    "limit": 30
+  }
+}
+```
+
+## 🔍 查詢參數說明
+
+### 推播平台類型
+- `IOS`: iOS 裝置
+- `ANDROID`: Android 裝置
+- `WEBPUSH`: 網頁推播
+
+### 推播狀態
+- `sent`: 已送出
+- `delivered`: 已送達
+- `failed`: 送達失敗
+- `pending`: 等待處理
+
+## 🛠️ API 測試工具
+
+### 內建測試腳本
+```bash
+# 使用專案查詢工具
+./scripts/queries/test_query.sh
+
+# 簡化查詢工具
+./scripts/queries/simple_query.sh --all
+```
+
+### cURL 範例
+```bash
+# 健康檢查
+curl -X GET "http://localhost:8000/health"
+
+# 查詢交易推播
+curl -X GET "http://localhost:8000/tx?transaction_id=tx_001&limit=10"
+
+# 查詢失敗記錄
+curl -X GET "http://localhost:8000/fail?transaction_id=tx_002"
+
+# 查詢 SNS 推播
+curl -X GET "http://localhost:8000/sns?sns_id=sns-12345"
+
+# POST 方式查詢
+curl -X POST "http://localhost:8000/query/transaction" \
+  -H "Content-Type: application/json" \
+  -d '{"transaction_id": "tx_001"}'
+```
+
+### Python 客戶端範例
+```python
+import httpx
+
+async def test_api():
+    async with httpx.AsyncClient() as client:
+        # 健康檢查
+        response = await client.get("http://localhost:8000/health")
+        print(response.json())
+
+        # 查詢交易
+        response = await client.get(
+            "http://localhost:8000/tx",
+            params={"transaction_id": "tx_001"}
+        )
+        print(response.json())
+```
+
+## ⚠️ 錯誤處理
+
+### HTTP 狀態碼
+- `200`: 成功
+- `400`: 請求參數錯誤
+- `422`: 請求資料驗證失敗
+- `500`: 伺服器內部錯誤
+
+### 錯誤回應格式
+```json
+{
+  "success": false,
+  "data": [],
+  "message": "查詢失敗: transaction_id 不能為空",
+  "total_count": 0,
+  "query_info": null
+}
+```
+
+### 驗證錯誤範例
+```json
+{
+  "detail": [
+    {
+      "loc": ["query", "transaction_id"],
+      "msg": "ensure this value has at least 1 characters",
+      "type": "value_error.any_str.min_length",
+      "ctx": {"limit_value": 1}
+    }
+  ]
+}
+```
+
+## 🚀 效能與最佳化
+
+### 查詢限制
+- **最大筆數**: 100 筆/次
+- **預設筆數**: 30 筆
+- **請求超時**: 5 秒
+
+### 快取策略
+- 內部 API 呼叫有 5 秒超時
+- 支援本地開發環境快速回應
+
+### 監控指標
+- API 回應時間
+- 查詢成功率
+- 錯誤分布統計
+
+## 🔒 安全性
+
+### 輸入驗證
+- 所有參數都經過 Pydantic 驗證
+- SQL Injection 防護
+- 參數長度限制
+
+### 錯誤訊息
+- 不洩露敏感系統資訊
+- 提供友善的錯誤說明
+- 詳細日誌記錄 (不包含在回應中)
+
+## 📈 版本演進
+
+### V4 版本特色
+- 專注於 `transaction_id` 基礎查詢
+- 統一的查詢結果模型
+- UTC+8 時區自動轉換
+- 改進的錯誤處理
+
+### V4.1 新增功能
+- SNS 查詢端點
+- 增強的查詢資訊
+- 更好的 API 文檔

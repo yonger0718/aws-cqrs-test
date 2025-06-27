@@ -1,0 +1,129 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 故障排除指南
+
+## 🚨 常見問題與解決方案
+
+### 1. 服務啟動問題
+
+#### Docker 容器無法啟動
+```bash
+# 檢查 Docker 狀態
+docker ps -a
+
+# 重新啟動服務
+cd query-service
+./deploy_docker.sh restart
+
+# 查看容器日誌
+docker logs query-service-localstack-1
+docker logs query-service-eks-handler-1
+```
+
+#### 端口衝突
+```bash
+# 檢查端口佔用
+lsof -i :8000
+lsof -i :4566
+
+# 停止所有服務
+docker-compose down
+
+# 重新啟動
+./deploy_docker.sh start
+```
+
+### 2. API 連接問題
+
+#### API Gateway 無回應
+```bash
+# 修復 API Gateway 配置
+./scripts/infrastructure/fix_api_gateway.sh
+
+# 檢查 API Gateway 狀態
+awslocal apigateway get-rest-apis
+```
+
+#### 健康檢查失敗
+```bash
+# 測試服務健康狀態
+curl "http://localhost:8000/health"
+
+# 檢查 FastAPI 服務日誌
+docker logs query-service-eks-handler-1 -f
+```
+
+### 3. 測試執行問題
+
+#### 測試失敗
+```bash
+# 清理測試環境
+poetry run pytest --cache-clear
+
+# 重新執行失敗的測試
+poetry run pytest --lf -v
+
+# 檢查測試覆蓋率
+poetry run pytest --cov-report=term-missing
+```
+
+#### Import 錯誤
+```bash
+# 重新安裝依賴
+poetry install --no-cache
+
+# 檢查 Python 路徑
+poetry run python -c "import sys; print(sys.path)"
+```
+
+### 4. 日誌查看與分析
+
+#### 重要日誌位置
+- **FastAPI 服務**: `docker logs query-service-eks-handler-1`
+- **Lambda 函數**: `docker logs query-service-query-lambda-1`
+- **LocalStack**: `docker logs query-service-localstack-1`
+
+#### 常用除錯指令
+```bash
+# 即時查看日誌
+docker logs -f query-service-eks-handler-1
+
+# 檢查 AWS 服務狀態
+awslocal dynamodb list-tables
+awslocal lambda list-functions
+
+# 系統驗證
+./scripts/verification/verify_system.sh
+```
+
+## 🔧 效能問題排解
+
+### 查詢緩慢
+1. 檢查 DynamoDB 表格索引
+2. 驗證 Lambda 函數記憶體配置
+3. 檢查網路連接延遲
+
+### 記憶體使用過高
+1. 監控 Docker 容器資源使用
+2. 檢查測試並行執行數量
+3. 清理暫存檔案
+
+## 📞 緊急處理程序
+
+### 完全重置環境
+```bash
+# 1. 停止所有服務
+docker-compose down -v
+
+# 2. 清理 Docker 資源
+docker system prune -f
+
+# 3. 重新初始化
+./scripts/deployment/restart_services.sh
+
+# 4. 執行驗證
+./scripts/testing/quick_test.sh
+```

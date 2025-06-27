@@ -1,0 +1,252 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# AWS 服務整合指南
+
+## ☁️ 使用的 AWS 服務
+
+本專案整合多個 AWS 服務實現 CQRS 架構，並使用 LocalStack 進行本地開發。
+
+### 核心 AWS 服務
+
+#### 🗄️ DynamoDB
+- **Command Side 表格**: `command-records`
+  - 處理寫入操作
+  - 觸發 DynamoDB Stream 事件
+
+- **Query Side 表格**: `notification-records`
+  - 最佳化查詢效能
+  - 支援 GSI (Global Secondary Index)
+
+#### ⚡ Lambda Functions
+- **Stream Processor**: [stream_processor_lambda/](mdc:query-service/lambdas/stream_processor_lambda)
+  - 處理 DynamoDB Stream 事件
+  - 自動同步 Command Side 到 Query Side
+
+- **Query Lambda**: [query_lambda/](mdc:query-service/lambdas/query_lambda)
+  - 處理查詢請求
+  - 與 API Gateway 整合
+
+- **Query Result Lambda**: [query_result_lambda/](mdc:query-service/lambdas/query_result_lambda)
+  - 處理查詢結果
+  - 資料轉換與格式化
+
+#### 🌐 API Gateway
+- **RESTful API 端點**
+- **Lambda 函數觸發器**
+- **請求/回應轉換**
+- **配置檔案**: [api-gateway/](mdc:query-service/infra/api-gateway)
+
+#### 📬 SNS (Simple Notification Service)
+- **推播通知服務**
+- **與 Lambda 函數整合**
+- **支援 iOS、Android、WebPush**
+
+#### 🎯 ECS (Elastic Container Service)
+- **容器化部署**
+- **FastAPI 服務運行環境**
+- **配置**: [ecs/](mdc:query-service/infra/ecs)
+
+## 🔄 服務整合模式
+
+### CQRS 資料流
+```txt
+1. 寫入請求 → Command Side (DynamoDB)
+2. DynamoDB Stream → Stream Processor Lambda
+3. 資料轉換 → Query Side (DynamoDB)
+4. 查詢請求 → Query Lambda
+5. 結果回傳 → FastAPI Service
+```
+
+### API Gateway 整合
+```txt
+Client Request → API Gateway → Lambda Function → DynamoDB → Response
+```
+
+### ECS 服務整合
+```txt
+ECS Task → FastAPI App → Internal API Gateway → Lambda Functions
+```
+
+## 🛠️ LocalStack 本地開發
+
+### 支援的服務
+- **DynamoDB**: 本地資料庫模擬
+- **Lambda**: 函數執行環境
+- **API Gateway**: API 端點模擬
+- **SNS**: 推播服務模擬
+- **CloudWatch**: 日誌與監控
+
+### 配置檔案
+- **Docker Compose**: [docker-compose.yml](mdc:query-service/docker-compose.yml)
+- **LocalStack 配置**: [infra/localstack/](mdc:query-service/infra/localstack)
+
+## 🔧 AWS 配置與管理
+
+### 環境變數
+```bash
+# AWS 區域
+AWS_DEFAULT_REGION=ap-southeast-1
+
+# LocalStack 端點
+LOCALSTACK_ENDPOINT=http://localhost:4566
+
+# API Gateway URL
+INTERNAL_API_URL=https://internal-api-gateway.amazonaws.com/v1
+```
+
+### 服務初始化
+```bash
+# 啟動 LocalStack 服務
+cd query-service
+./deploy_docker.sh start
+
+# 檢查服務狀態
+docker ps | grep localstack
+
+# 驗證 AWS 服務
+awslocal dynamodb list-tables
+awslocal lambda list-functions
+```
+
+## 📊 DynamoDB 資料模型
+
+### Command Records 表格
+```json
+{
+  "transaction_id": "tx_001",
+  "token": "device_token_123",
+  "platform": "IOS",
+  "notification_title": "測試推播",
+  "notification_body": "這是測試訊息",
+  "status": "sent",
+  "send_ts": 1640995200000,
+  "ap_id": "app_001",
+  "created_at": 1640995200000
+}
+```
+
+### Notification Records 表格
+```json
+{
+  "transaction_id": "tx_001",
+  "token": "device_token_123",
+  "platform": "IOS",
+  "notification_title": "測試推播",
+  "notification_body": "這是測試訊息",
+  "status": "delivered",
+  "send_ts": 1640995200000,
+  "delivered_ts": 1640995260000,
+  "sns_id": "sns-12345",
+  "retry_cnt": 0,
+  "created_at": 1640995200000
+}
+```
+
+## ⚡ Lambda 函數開發
+
+### 函數結構
+```python
+# Lambda 處理器範例
+def lambda_handler(event, context):
+    try:
+        # 處理事件
+        process_event(event)
+
+        return {
+            'statusCode': 200,
+            'body': json.dumps({'success': True})
+        }
+    except Exception as e:
+        logger.error(f"Lambda error: {e}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'error': str(e)})
+        }
+```
+
+### 部署與測試
+```bash
+# 部署 Lambda 函數
+cd query-service
+./deploy_docker.sh deploy
+
+# 測試 Lambda 函數
+python test_lambda.py
+
+# 查看 Lambda 日誌
+docker logs query-service-query-lambda-1
+```
+
+## 🔍 監控與除錯
+
+### CloudWatch 日誌
+```bash
+# 查看本地 CloudWatch 日誌
+awslocal logs describe-log-groups
+awslocal logs get-log-events --log-group-name /aws/lambda/query-lambda
+```
+
+### DynamoDB 操作
+```bash
+# 列出所有表格
+awslocal dynamodb list-tables
+
+# 查詢表格內容
+awslocal dynamodb scan --table-name notification-records
+
+# 查詢特定項目
+awslocal dynamodb get-item --table-name notification-records --key '{"transaction_id":{"S":"tx_001"}}'
+```
+
+### API Gateway 測試
+```bash
+# 測試 API 端點
+curl "http://localhost:4566/restapis/{api-id}/test/_user_request_/tx?transaction_id=tx_001"
+
+# 修復 API Gateway 配置
+./scripts/infrastructure/fix_api_gateway.sh
+```
+
+## 🚀 部署策略
+
+### 本地開發
+1. 使用 LocalStack 模擬 AWS 服務
+2. Docker Compose 一鍵啟動環境
+3. 快速測試與迭代
+
+### 生產部署
+1. **Infrastructure as Code** (將來可使用 CDK/Terraform)
+2. **容器化部署** (ECS/Fargate)
+3. **監控與告警** (CloudWatch)
+
+### 環境管理
+```bash
+# 開發環境
+ENVIRONMENT=development
+
+# 測試環境
+ENVIRONMENT=test
+
+# 生產環境
+ENVIRONMENT=production
+```
+
+## 🔒 安全性考量
+
+### IAM 權限
+- Lambda 執行角色最小權限原則
+- DynamoDB 存取權限控制
+- API Gateway 認證授權
+
+### 資料保護
+- 敏感資料加密
+- 網路安全群組設定
+- VPC 隔離 (如適用)
+
+### 監控告警
+- 異常存取監控
+- 效能指標追蹤
+- 錯誤率告警

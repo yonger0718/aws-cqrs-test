@@ -1,0 +1,225 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# LocalStack 資料庫開發指南
+
+## 🐳 LocalStack DynamoDB 環境
+
+### 基本配置
+- **端點**: http://localhost:4566
+- **區域**: ap-southeast-1 (預設)
+- **認證**: 使用測試憑證 (test/test)
+
+### 容器管理
+```bash
+# 啟動 LocalStack 環境
+cd query-service
+./deploy_docker.sh start
+
+# 檢查 LocalStack 狀態
+curl http://localhost:4566/health
+
+# 查看容器日誌
+docker logs query-service-localstack-1 -f
+```
+
+## 📊 表格初始化與管理
+
+### 自動初始化腳本
+- **主腳本**: [setup.sh](mdc:query-service/infra/localstack/setup.sh)
+- **Docker 版本**: [setup_docker.sh](mdc:query-service/infra/localstack/setup_docker.sh)
+
+### 手動表格管理
+```bash
+# 列出所有表格
+awslocal dynamodb list-tables --endpoint-url http://localhost:4566
+
+# 檢查表格結構
+awslocal dynamodb describe-table --table-name notification-records --endpoint-url http://localhost:4566
+
+# 刪除表格 (重置)
+awslocal dynamodb delete-table --table-name command-records --endpoint-url http://localhost:4566
+awslocal dynamodb delete-table --table-name notification-records --endpoint-url http://localhost:4566
+```
+
+## 🧪 測試資料管理
+
+### 插入測試資料
+```bash
+# 使用 setup 腳本的測試資料
+./query-service/infra/localstack/setup.sh
+
+# 手動插入資料
+awslocal dynamodb put-item \
+  --table-name command-records \
+  --item '{
+    "transaction_id": {"S": "tx-test-001"},
+    "created_at": {"N": "1732000000"},
+    "notification_title": {"S": "Test Notification"},
+    "notification_body": {"S": "This is a test notification"},
+    "status": {"S": "SENT"},
+    "platform": {"S": "IOS"},
+    "ap_id": {"S": "ap-001"},
+    "sns_id": {"S": "sns-test-001"}
+  }' \
+  --endpoint-url http://localhost:4566
+```
+
+### 查詢測試資料
+```bash
+# 查詢特定記錄
+awslocal dynamodb get-item \
+  --table-name notification-records \
+  --key '{"transaction_id": {"S": "tx-test-001"}}' \
+  --endpoint-url http://localhost:4566
+
+# 掃描表格內容
+awslocal dynamodb scan \
+  --table-name notification-records \
+  --endpoint-url http://localhost:4566
+
+# 查詢失敗記錄
+awslocal dynamodb scan \
+  --table-name notification-records \
+  --filter-expression "#status = :failed_status" \
+  --expression-attribute-names '{"#status": "status"}' \
+  --expression-attribute-values '{":failed_status": {"S": "FAILED"}}' \
+  --endpoint-url http://localhost:4566
+```
+
+## 🔄 Stream 測試與監控
+
+### 檢查 Stream 配置
+```bash
+# 檢查 Stream 狀態
+awslocal dynamodb describe-table \
+  --table-name command-records \
+  --query 'Table.StreamSpecification' \
+  --endpoint-url http://localhost:4566
+
+# 獲取 Stream ARN
+awslocal dynamodb describe-table \
+  --table-name command-records \
+  --query 'Table.LatestStreamArn' \
+  --output text \
+  --endpoint-url http://localhost:4566
+```
+
+### Stream 處理測試
+```bash
+# 查看 Stream Processor Lambda 日誌
+docker logs query-service-stream-processor-lambda-1 -f
+
+# 手動觸發 Stream 處理 (插入測試資料)
+awslocal dynamodb put-item \
+  --table-name command-records \
+  --item file://query-service/test-events/test-item.json \
+  --endpoint-url http://localhost:4566
+```
+
+## 🛠️ 開發工具與除錯
+
+### 常用 awslocal 指令
+```bash
+# 表格操作
+awslocal dynamodb list-tables
+awslocal dynamodb describe-table --table-name [TABLE_NAME]
+awslocal dynamodb scan --table-name [TABLE_NAME] --select COUNT
+
+# Lambda 操作
+awslocal lambda list-functions
+awslocal lambda invoke --function-name [FUNCTION_NAME] output.json
+
+# API Gateway 操作
+awslocal apigateway get-rest-apis
+```
+
+### 資料一致性檢查
+```bash
+# 比較兩表記錄數
+COMMAND_COUNT=$(awslocal dynamodb scan --table-name command-records --select COUNT --endpoint-url http://localhost:4566 --output text --query 'Count')
+QUERY_COUNT=$(awslocal dynamodb scan --table-name notification-records --select COUNT --endpoint-url http://localhost:4566 --output text --query 'Count')
+
+echo "Command records: $COMMAND_COUNT"
+echo "Query records: $QUERY_COUNT"
+```
+
+### 效能測試
+```bash
+# 批量插入測試資料
+for i in {1..10}; do
+  awslocal dynamodb put-item \
+    --table-name command-records \
+    --item "{\"transaction_id\": {\"S\": \"tx-batch-$i\"}, \"created_at\": {\"N\": \"$(date +%s)\"}, \"notification_title\": {\"S\": \"Batch Test $i\"}, \"notification_body\": {\"S\": \"Test message $i\"}, \"status\": {\"S\": \"SENT\"}, \"platform\": {\"S\": \"IOS\"}, \"ap_id\": {\"S\": \"ap-batch\"}}" \
+    --endpoint-url http://localhost:4566
+done
+```
+
+## 🔧 故障排除
+
+### 常見問題
+1. **表格不存在**
+   ```bash
+   # 重新執行初始化
+   ./query-service/infra/localstack/setup.sh
+   ```
+
+2. **Stream 處理失敗**
+   ```bash
+   # 檢查 Lambda 函數狀態
+   docker logs query-service-stream-processor-lambda-1 --tail 50
+
+   # 重新部署 Lambda
+   cd query-service
+   ./deploy_docker.sh deploy
+   ```
+
+3. **連接超時**
+   ```bash
+   # 檢查 LocalStack 健康狀態
+   curl http://localhost:4566/health
+
+   # 重啟 LocalStack
+   docker restart query-service-localstack-1
+   ```
+
+### 完全重置環境
+```bash
+# 停止並清理所有容器
+cd query-service
+docker-compose down -v
+
+# 重新啟動並初始化
+./deploy_docker.sh start
+./infra/localstack/setup.sh
+```
+
+## 📈 開發最佳實踐
+
+### 測試資料命名規範
+- **Transaction ID**: `tx-[type]-[number]` (例：tx-test-001, tx-failed-002)
+- **SNS ID**: `sns-[type]-[number]` (例：sns-test-001, sns-batch-002)
+- **AP ID**: `ap-[type]` (例：ap-test, ap-batch)
+
+### 環境變數設置
+```bash
+# LocalStack 相關
+export LOCALSTACK_ENDPOINT=http://localhost:4566
+export AWS_DEFAULT_REGION=ap-southeast-1
+export AWS_ACCESS_KEY_ID=test
+export AWS_SECRET_ACCESS_KEY=test
+
+# 表格名稱
+export NOTIFICATION_TABLE_NAME=notification-records
+export COMMAND_TABLE_NAME=command-records
+```
+
+### 日誌監控
+```bash
+# 監控所有相關服務日誌
+docker logs query-service-localstack-1 -f &
+docker logs query-service-eks-handler-1 -f &
+docker logs query-service-stream-processor-lambda-1 -f &
+```

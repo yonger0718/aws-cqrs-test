@@ -1,63 +1,206 @@
 ---
-description: when starting for developing
+description:
 globs:
 alwaysApply: false
 ---
-# 開發工作流程
+# 開發工作流程指南
 
-## 快速開始流程
+## 🚀 開發環境設置
 
-### 1. 環境驗證
+### 初始設置
 ```bash
-# 檢查系統環境和依賴
+# 1. 安裝 Poetry (如果尚未安裝)
+curl -sSL https://install.python-poetry.org | python3 -
+
+# 2. 安裝專案依賴
+poetry install
+
+# 3. 檢查系統環境
 ./scripts/verification/verify_system.sh
+
+# 4. 啟動開發環境
+./scripts/deployment/restart_services.sh
 ```
 
-### 2. 服務啟動
+### 開發環境驗證
 ```bash
-# 重啟並初始化服務
-./scripts/restart_services.sh
+# 檢查服務狀態
+./scripts/testing/quick_test.sh
+
+# 完整功能測試
+./scripts/testing/test_full_flow.sh
 ```
 
-### 3. API Gateway 修復
+## 🔄 日常開發流程
+
+### 1. 開始開發前
 ```bash
-# 修復 API Gateway 配置 (如果需要)
-./scripts/fix_api_gateway.sh
-```
+# 拉取最新程式碼
+git pull origin main
 
-## 測試流程
+# 更新依賴
+poetry install
 
-### 快速測試
-- [scripts/testing/quick_test.sh](mdc:scripts/testing/quick_test.sh): 快速功能驗證
-- [scripts/testing/test_full_flow.sh](mdc:scripts/testing/test_full_flow.sh): 完整 CQRS 流程測試
-
-### 查詢測試
-- [scripts/queries/test_query.sh](mdc:scripts/queries/test_query.sh): 查詢測試工具
-- [scripts/queries/simple_query.sh](mdc:scripts/queries/simple_query.sh): 簡化查詢工具
-
-### Python 測試
-```bash
+# 啟動本地服務
 cd query-service
-pytest tests/test_eks_handler.py -v      # 單元測試
-pytest tests/test_integration.py -v      # 整合測試
+./deploy_docker.sh start
 ```
 
-## 重要配置文件
+### 2. 開發期間
 
-- [docker-compose.yml](mdc:query-service/docker-compose.yml): Docker 服務配置
-- [requirements.txt](mdc:query-service/requirements.txt): Python 依賴
-- [pytest.ini](mdc:pytest.ini): 測試配置
+#### 程式碼修改
+- **FastAPI 服務**: 編輯 [main.py](mdc:query-service/eks_handler/main.py)
+- **Lambda 函數**: 修改 [lambdas/](mdc:query-service/lambdas) 目錄下的相關文件
+- **測試文件**: 更新 [tests/](mdc:query-service/tests) 目錄下的測試
 
-## 日常開發建議
+#### 即時測試
+```bash
+# 單元測試
+poetry run pytest query-service/tests/test_eks_handler.py -v
 
-1. **修改代碼前**: 先執行 `quick_test.sh` 確保環境正常
-2. **測試新功能**: 使用 `simple_query.sh --all` 進行查詢驗證
-3. **提交前**: 執行完整測試流程確保沒有回歸問題
+# 整合測試
+poetry run pytest query-service/tests/test_integration.py -v
 
-## 故障排除
+# 測試覆蓋率
+poetry run pytest --cov=query-service/eks_handler --cov-report=html
+```
 
-如果遇到問題，依序檢查：
-1. LocalStack 服務狀態
-2. DynamoDB 表是否正確創建
-3. API Gateway 配置是否正確
-4. Lambda 函數部署狀態
+#### API 測試
+```bash
+# 快速 API 測試
+curl "http://localhost:8000/health"
+curl "http://localhost:8000/tx?transaction_id=tx_001"
+
+# 使用查詢工具
+./scripts/queries/simple_query.sh --all
+```
+
+### 3. 提交前檢查
+
+#### 程式碼品質檢查
+```bash
+# 自動執行 pre-commit 檢查
+pre-commit run --all-files
+
+# 手動執行檢查
+poetry run black query-service/
+poetry run isort query-service/
+poetry run flake8 query-service/
+poetry run mypy query-service/
+```
+
+#### 完整測試套件
+```bash
+# 執行所有測試
+poetry run pytest
+
+# 測試 Lambda 部署
+./scripts/testing/test_lambda_deployment.sh
+
+# 端到端測試
+./scripts/testing/test_full_flow.sh
+```
+
+## 🛠️ 常見開發任務
+
+### 新增 API 端點
+
+1. **修改 FastAPI 服務** ([main.py](mdc:query-service/eks_handler/main.py))
+   ```python
+   @app.get("/new-endpoint")
+   async def new_endpoint():
+       # 實作邏輯
+   ```
+
+2. **新增對應測試** ([test_eks_handler.py](mdc:query-service/tests/test_eks_handler.py))
+   ```python
+   async def test_new_endpoint():
+       # 測試邏輯
+   ```
+
+3. **更新 API 文檔**
+   - FastAPI 會自動生成 OpenAPI 文檔
+   - 查看：http://localhost:8000/docs
+
+### 修改 Lambda 函數
+
+1. **編輯 Lambda 程式碼** ([lambdas/](mdc:query-service/lambdas))
+2. **更新測試** ([tests/test_lambdas/](mdc:query-service/tests/test_lambdas))
+3. **重新部署**
+   ```bash
+   cd query-service
+   ./deploy_docker.sh deploy
+   ```
+
+### 調整資料庫查詢
+
+1. **修改查詢邏輯** (在 [main.py](mdc:query-service/eks_handler/main.py) 的 QueryService 類別)
+2. **更新資料模型** (NotificationRecord 或 QueryResult)
+3. **調整相關測試**
+
+### 除錯與問題排解
+
+#### 查看日誌
+```bash
+# FastAPI 服務日誌
+docker logs query-service-eks-handler-1
+
+# Lambda 函數日誌
+docker logs query-service-query-lambda-1
+
+# LocalStack 日誌
+docker logs query-service-localstack-1
+```
+
+#### 常見問題
+1. **API Gateway 連接問題**
+   ```bash
+   ./scripts/infrastructure/fix_api_gateway.sh
+   ```
+
+2. **DynamoDB 表格問題**
+   ```bash
+   ./scripts/infrastructure/reset_dynamodb.sh
+   ```
+
+3. **Docker 容器問題**
+   ```bash
+   cd query-service
+   ./deploy_docker.sh restart
+   ```
+
+## 🔍 除錯工具
+
+### 本地測試工具
+- **查詢測試**: [scripts/queries/test_query.sh](mdc:scripts/queries/test_query.sh)
+- **系統驗證**: [scripts/verification/verify_system.sh](mdc:scripts/verification/verify_system.sh)
+- **完整流程測試**: [scripts/testing/test_full_flow.sh](mdc:scripts/testing/test_full_flow.sh)
+
+### API 文檔與測試
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **健康檢查**: http://localhost:8000/health
+
+### 監控與分析
+- **測試覆蓋率**: 查看 `htmlcov/index.html`
+- **程式碼品質**: pre-commit 報告
+- **效能分析**: Lambda 函數執行時間
+
+## 🎯 最佳實踐
+
+### 程式碼品質
+- 遵循 PEP 8 編碼規範
+- 使用 type hints
+- 編寫有意義的測試
+- 保持高測試覆蓋率 (>60%)
+
+### Git 工作流程
+- 創建功能分支進行開發
+- 提交前執行 pre-commit 檢查
+- 編寫清晰的 commit 訊息
+- 定期同步主分支
+
+### 測試策略
+- 單元測試：測試個別函數和類別
+- 整合測試：測試 API 端點
+- 端到端測試：測試完整業務流程

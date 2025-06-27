@@ -1,0 +1,143 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# 快速指令參考
+
+## 🚀 常用開發指令
+
+### 環境管理
+```bash
+# 安裝依賴
+poetry install
+
+# 啟動服務
+cd query-service && ./deploy_docker.sh start
+
+# 重啟服務
+./scripts/deployment/restart_services.sh
+
+# 檢查狀態
+./scripts/testing/quick_test.sh
+```
+
+### 測試執行
+```bash
+# 執行所有測試
+poetry run pytest
+
+# 單元測試
+poetry run pytest -m unit
+
+# 覆蓋率報告
+poetry run pytest --cov=query-service/eks_handler --cov-report=html
+
+# 特定檔案測試
+poetry run pytest query-service/tests/test_eks_handler.py -v
+```
+
+### API 測試
+```bash
+# 健康檢查
+curl "http://localhost:8000/health"
+
+# 查詢交易
+curl "http://localhost:8000/tx?transaction_id=tx_001"
+
+# 查詢失敗記錄
+curl "http://localhost:8000/fail"
+
+# SNS 查詢
+curl "http://localhost:8000/sns?sns_id=sns-12345"
+```
+
+### 程式碼品質
+```bash
+# Pre-commit 檢查
+pre-commit run --all-files
+
+# 格式化程式碼
+poetry run black query-service/
+poetry run isort query-service/
+
+# 類型檢查
+poetry run mypy query-service/
+
+# 語法檢查
+poetry run flake8 query-service/
+```
+
+### Docker 管理
+```bash
+# 查看容器狀態
+docker ps
+
+# 查看日誌
+docker logs query-service-eks-handler-1 -f
+
+# 重新建置
+cd query-service && ./deploy_docker.sh rebuild
+
+# 清理資源
+docker system prune -f
+```
+
+### AWS Local 操作
+```bash
+# DynamoDB 操作
+awslocal dynamodb list-tables
+awslocal dynamodb scan --table-name notification-records
+
+# Lambda 操作
+awslocal lambda list-functions
+awslocal lambda invoke --function-name query-lambda
+
+# API Gateway
+awslocal apigateway get-rest-apis
+```
+
+## ⚡ 一鍵式工作流程
+
+### 開發啟動
+```bash
+# 完整開發環境啟動
+poetry install && \
+cd query-service && \
+./deploy_docker.sh start && \
+cd .. && \
+./scripts/testing/quick_test.sh
+```
+
+### 提交前檢查
+```bash
+# 完整檢查流程
+pre-commit run --all-files && \
+poetry run pytest && \
+./scripts/testing/test_full_flow.sh
+```
+
+### 故障排除
+```bash
+# 快速重置
+docker-compose down -v && \
+./scripts/deployment/restart_services.sh && \
+./scripts/infrastructure/fix_api_gateway.sh
+```
+
+## 📱 常用檔案路徑
+
+### 主要程式碼
+- [FastAPI 主檔案](mdc:query-service/eks_handler/main.py)
+- [主要測試檔案](mdc:query-service/tests/test_eks_handler.py)
+- [專案配置](mdc:pyproject.toml)
+
+### 配置檔案
+- [Docker Compose](mdc:query-service/docker-compose.yml)
+- [Pre-commit 配置](mdc:.pre-commit-config.yaml)
+- [測試配置](mdc:query-service/tests/conftest.py)
+
+### 腳本工具
+- [部署腳本](mdc:query-service/deploy_docker.sh)
+- [查詢工具](mdc:scripts/queries/simple_query.sh)
+- [系統驗證](mdc:scripts/verification/verify_system.sh)
