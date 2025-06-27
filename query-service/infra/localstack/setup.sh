@@ -67,8 +67,10 @@ create_dynamodb_table() {
         --table-name $DYNAMODB_TABLE_NAME \
         --attribute-definitions \
             AttributeName=transaction_id,AttributeType=S \
+            AttributeName=created_at,AttributeType=N \
         --key-schema \
             AttributeName=transaction_id,KeyType=HASH \
+            AttributeName=created_at,KeyType=RANGE \
         --billing-mode PAY_PER_REQUEST \
         --no-cli-pager > /dev/null 2>&1 || true
 
@@ -79,10 +81,11 @@ create_dynamodb_table() {
 insert_test_data() {
     print_step "Inserting test data into DynamoDB table..."
 
-    # Test data with new schema structure
+    # Test data with correct schema structure
     test_items=(
         '{
             "transaction_id": {"S": "txn-test-001"},
+            "created_at": {"N": "1640995200"},
             "token": {"S": "test-device-token-001"},
             "platform": {"S": "IOS"},
             "notification_title": {"S": "Payment Confirmation"},
@@ -90,22 +93,22 @@ insert_test_data() {
             "status": {"S": "DELIVERED"},
             "send_ts": {"N": "1640995200"},
             "delivered_ts": {"N": "1640995210"},
-            "ap_id": {"S": "payment-service"},
-            "created_at": {"N": "1640995200"}
+            "ap_id": {"S": "payment-service"}
         }'
         '{
             "transaction_id": {"S": "txn-test-002"},
+            "created_at": {"N": "1640995300"},
             "token": {"S": "test-device-token-002"},
             "platform": {"S": "ANDROID"},
             "notification_title": {"S": "Order Update"},
             "notification_body": {"S": "Your order has been shipped"},
             "status": {"S": "SENT"},
             "send_ts": {"N": "1640995300"},
-            "ap_id": {"S": "ecommerce-service"},
-            "created_at": {"N": "1640995300"}
+            "ap_id": {"S": "ecommerce-service"}
         }'
         '{
             "transaction_id": {"S": "txn-failed-001"},
+            "created_at": {"N": "1640995400"},
             "token": {"S": "invalid-device-token"},
             "platform": {"S": "IOS"},
             "notification_title": {"S": "Account Alert"},
@@ -113,11 +116,11 @@ insert_test_data() {
             "status": {"S": "FAILED"},
             "send_ts": {"N": "1640995400"},
             "failed_ts": {"N": "1640995410"},
-            "ap_id": {"S": "security-service"},
-            "created_at": {"N": "1640995400"}
+            "ap_id": {"S": "security-service"}
         }'
         '{
             "transaction_id": {"S": "txn-failed-002"},
+            "created_at": {"N": "1640995500"},
             "token": {"S": "expired-device-token"},
             "platform": {"S": "ANDROID"},
             "notification_title": {"S": "Login Notification"},
@@ -125,8 +128,7 @@ insert_test_data() {
             "status": {"S": "FAILED"},
             "send_ts": {"N": "1640995500"},
             "failed_ts": {"N": "1640995510"},
-            "ap_id": {"S": "auth-service"},
-            "created_at": {"N": "1640995500"}
+            "ap_id": {"S": "auth-service"}
         }'
     )
 
@@ -210,13 +212,14 @@ verify_setup() {
     # Test sample queries
     print_step "Testing sample queries..."
 
-    # Test transaction query
-    echo "Testing transaction query (txn-test-001):"
-    aws dynamodb get-item \
+    # Test transaction query using scan (no GSI available)
+    echo "Testing transaction query using scan (txn-test-001):"
+    aws dynamodb scan \
         --endpoint-url $LOCALSTACK_ENDPOINT \
         --region $AWS_REGION \
         --table-name $DYNAMODB_TABLE_NAME \
-        --key '{"transaction_id": {"S": "txn-test-001"}}' \
+        --filter-expression "transaction_id = :txn_id" \
+        --expression-attribute-values '{":txn_id": {"S": "txn-test-001"}}' \
         --no-cli-pager \
         --output table 2>/dev/null || print_warning "Transaction query test failed"
 

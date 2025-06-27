@@ -1,7 +1,7 @@
 import json
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import boto3
 from aws_lambda_powertools import Logger, Tracer
@@ -9,7 +9,7 @@ from aws_lambda_powertools.event_handler import APIGatewayHttpResolver
 from aws_lambda_powertools.event_handler.exceptions import BadRequestError, InternalServerError
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
-from boto3.dynamodb.conditions import Attr
+from boto3.dynamodb.conditions import Attr, Key
 from botocore.exceptions import BotoCoreError, ClientError
 
 # Environment detection
@@ -78,22 +78,48 @@ class QueryService:
         self.table = dynamodb.Table(table_name)
         logger.info(f"QueryService initialized with table: {table_name}")
 
+    def _sort_items_by_created_at_desc(self, items: List[Dict[str, Any]]) -> None:
+        """
+        共用方法：按 created_at 降序排序，確保最新記錄在最前面
+        直接修改原 list，無返回值
+        """
+
+        def safe_sort_key(item: Dict[str, Any]) -> int:
+            created_at = item.get("created_at", 0)
+            if created_at is None:
+                return 0
+            try:
+                return int(created_at) if created_at else 0
+            except (ValueError, TypeError):
+                return 0
+
+        items.sort(key=safe_sort_key, reverse=True)
+
     @tracer.capture_method
     def query_transaction_notifications(
         self, transaction_id: Optional[str] = None, limit: int = 30
     ) -> Dict[str, Any]:
         """Query notification records by transaction_id or get recent records"""
         if transaction_id and transaction_id.strip():
-            # 原有邏輯：查詢特定 transaction_id
+            # 使用 scan 配合 filter expression 查詢特定 transaction_id（因為沒有 GSI）
             logger.info(
                 "Starting transaction notifications query", extra={"transaction_id": transaction_id}
             )
 
             try:
-                response = self.table.get_item(Key={"transaction_id": transaction_id})
-                item = response.get("Item")
+                response = self.table.scan(
+                    FilterExpression=Attr("transaction_id").eq(transaction_id),
+                    ProjectionExpression=(
+                        "transaction_id, #token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, sns_id, retry_cnt"
+                    ),
+                    ExpressionAttributeNames={"#token": "token", "#status": "status"},
+                )
+                items = response.get("Items", [])
                 consumed_capacity = response.get("ConsumedCapacity", {})
-                items = [item] if item else []
+
+                self._sort_items_by_created_at_desc(items)
 
                 logger.info(
                     "Transaction notifications query completed successfully",
@@ -152,18 +178,7 @@ class QueryService:
                 items = response.get("Items", [])
                 consumed_capacity = response.get("ConsumedCapacity", {})
 
-                # 按 created_at 降序排序，取最新的 limit 筆
-                # 確保 created_at 是數字類型，處理 None 和字符串類型
-                def safe_sort_key(item: Dict[str, Any]) -> int:
-                    created_at = item.get("created_at", 0)
-                    if created_at is None:
-                        return 0
-                    try:
-                        return int(created_at) if created_at else 0
-                    except (ValueError, TypeError):
-                        return 0
-
-                items.sort(key=safe_sort_key, reverse=True)
+                self._sort_items_by_created_at_desc(items)
                 items = items[:limit]
 
                 logger.info(
@@ -204,21 +219,30 @@ class QueryService:
 
         try:
             if transaction_id and transaction_id.strip():
-                # Query specific transaction and check if it's failed
+                # 使用 scan 查詢特定 transaction_id 且狀態為 FAILED 的記錄（因為沒有 GSI）
                 logger.info(f"Querying specific transaction: {transaction_id}")
-                response = self.table.get_item(Key={"transaction_id": transaction_id})
+                response = self.table.scan(
+                    FilterExpression=Attr("transaction_id").eq(transaction_id)
+                    & Attr("status").eq("FAILED"),
+                    ProjectionExpression=(
+                        "transaction_id, #token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, retry_cnt"
+                    ),
+                    ExpressionAttributeNames={"#token": "token", "#status": "status"},
+                )
 
-                item = response.get("Item")
-                items = []
+                items = response.get("Items", [])
+                consumed_capacity = response.get("ConsumedCapacity", {})
 
-                # If the record exists and status is FAILED, return it
-                if item and item.get("status") == "FAILED":
-                    items = [item]
-                    logger.info(f"Found failed record for transaction: {transaction_id}")
+                self._sort_items_by_created_at_desc(items)
+
+                if items:
+                    logger.info(
+                        f"Found {len(items)} failed record(s) for transaction: {transaction_id}"
+                    )
                 else:
                     logger.info(f"No failed record found for transaction: {transaction_id}")
-
-                consumed_capacity = response.get("ConsumedCapacity", {})
             else:
                 # Query all failed notifications using scan
                 logger.info("Querying all failed notifications")
@@ -234,6 +258,8 @@ class QueryService:
 
                 items = response.get("Items", [])
                 consumed_capacity = response.get("ConsumedCapacity", {})
+
+                self._sort_items_by_created_at_desc(items)
 
                 logger.info(f"Found {len(items)} failed notifications")
 
@@ -277,29 +303,55 @@ class QueryService:
         logger.info(f"Querying notifications for sns_id: {sns_id}")
 
         try:
-            # Use scan with filter since sns_id is not part of the key schema
-            response = self.table.scan(
-                FilterExpression=Attr("sns_id").eq(sns_id),
-                ProjectionExpression=(
-                    "transaction_id, #token, platform, notification_title, "
-                    "notification_body, #status, send_ts, delivered_ts, "
-                    "failed_ts, ap_id, created_at, sns_id, retry_cnt"
-                ),
-                ExpressionAttributeNames={"#token": "token", "#status": "status"},
-            )
+            # 嘗試使用 GSI 查詢（最佳效能）
+            try:
+                logger.info(f"Attempting GSI query for sns_id: {sns_id}")
+                response = self.table.query(
+                    IndexName="sns_id-transaction_id-index",
+                    KeyConditionExpression=Key("sns_id").eq(sns_id),
+                    ProjectionExpression=(
+                        "transaction_id, #token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, sns_id, retry_cnt"
+                    ),
+                    ExpressionAttributeNames={"#token": "token", "#status": "status"},
+                )
+                query_method = "GSI"
+                logger.info(f"GSI query successful for sns_id: {sns_id}")
+
+            except ClientError as gsi_error:
+                # 如果 GSI 查詢失敗（例如 ValidationException），回退到 scan
+                error_code = gsi_error.response.get("Error", {}).get("Code", "")
+                logger.warning(
+                    f"GSI query failed ({error_code}), falling back to scan for sns_id: {sns_id}"
+                )
+
+                response = self.table.scan(
+                    FilterExpression=Attr("sns_id").eq(sns_id),
+                    ProjectionExpression=(
+                        "transaction_id, #token, platform, notification_title, "
+                        "notification_body, #status, send_ts, delivered_ts, "
+                        "failed_ts, ap_id, created_at, sns_id, retry_cnt"
+                    ),
+                    ExpressionAttributeNames={"#token": "token", "#status": "status"},
+                )
+                query_method = "SCAN_FALLBACK"
 
             items = response.get("Items", [])
             consumed_capacity = response.get("ConsumedCapacity", {})
+
+            self._sort_items_by_created_at_desc(items)
 
             logger.info(f"Found {len(items)} notifications for sns_id: {sns_id}")
 
             # Log consumption details
             logger.info(
-                f"Query completed for sns_id: {sns_id}",
+                f"Query completed for sns_id: {sns_id} using {query_method}",
                 extra={
                     "sns_id": sns_id,
                     "items_count": len(items),
                     "consumed_capacity": consumed_capacity,
+                    "query_method": query_method,
                 },
             )
 
